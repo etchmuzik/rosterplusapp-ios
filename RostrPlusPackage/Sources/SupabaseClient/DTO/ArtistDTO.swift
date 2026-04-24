@@ -25,6 +25,10 @@ public struct ArtistDTO: Codable, Hashable, Sendable, Identifiable {
     public let pressQuotes: [PressQuote]?
     public let pastPerformances: [PastPerformance]?
     public let socialLinks: SocialLinks?
+    /// date[] column — the artist's self-declared unavailable days.
+    /// Drives AvailabilityView's red cells + server-side conflict
+    /// checks when a promoter requests a booking.
+    public let blockedDates: [String]?
 
     /// Shape of each element inside the `press_quotes` JSONB array.
     /// Matches what the web admin tool writes: { outlet, quote }.
@@ -67,6 +71,7 @@ public struct ArtistDTO: Codable, Hashable, Sendable, Identifiable {
         case pressQuotes      = "press_quotes"
         case pastPerformances = "past_performances"
         case socialLinks      = "social_links"
+        case blockedDates     = "blocked_dates"
     }
 
     /// Compact list-view columns — what RosterStore asks for. Keeps the
@@ -75,10 +80,11 @@ public struct ArtistDTO: Codable, Hashable, Sendable, Identifiable {
         "id,stage_name,genre,cities_active,base_fee,currency,rating,verified,status"
 
     /// Full detail columns — what ArtistView + EPKView ask for. Includes
-    /// the press/performance JSONB and social handles.
+    /// the press/performance JSONB, social handles, and blocked_dates
+    /// for the AvailabilityView calendar.
     public static let selectFieldsDetail = """
     id,profile_id,stage_name,genre,cities_active,base_fee,currency,\
     rating,total_bookings,verified,status,epk_url,press_quotes,\
-    past_performances,social_links
+    past_performances,social_links,blocked_dates
     """
 }

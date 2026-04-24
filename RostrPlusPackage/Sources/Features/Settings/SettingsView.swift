@@ -24,6 +24,7 @@ import UIKit
 public struct SettingsView: View {
     @Bindable var nav: NavigationModel
     @Environment(AuthStore.self) private var auth
+    @Environment(ProfileStore.self) private var profileStore
 
     @State private var pushEnabled = true
     @State private var emailUpdates = true
@@ -38,10 +39,26 @@ public struct SettingsView: View {
     /// only before AuthStore resolves — once signed in we show the real
     /// address from the current session.
     private var displayEmail: String {
+        if let profileEmail = profileStore.current?.email, !profileEmail.isEmpty {
+            return profileEmail
+        }
         if case .signedIn(_, let email, _) = auth.state, !email.isEmpty {
             return email
         }
-        return "hesham@beyondmngmt.ae"
+        return "—"
+    }
+
+    /// Display name falls back through profile → email local-part → "You".
+    private var displayName: String {
+        if let name = profileStore.current?.displayName, !name.isEmpty {
+            return name
+        }
+        if case .signedIn(_, let email, _) = auth.state {
+            let local = email.split(separator: "@").first.map(String.init) ?? "You"
+            let token = local.split(separator: ".").first.map(String.init) ?? local
+            return token.prefix(1).uppercased() + token.dropFirst()
+        }
+        return "You"
     }
 
     public var body: some View {
@@ -80,9 +97,9 @@ public struct SettingsView: View {
 
     private var profileCard: some View {
         HStack(alignment: .center, spacing: R.S.md) {
-            Cover(seed: "Hesham", size: 56, cornerRadius: R.Rad.card)
+            Cover(seed: displayName, size: 56, cornerRadius: R.Rad.card)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Hesham Saied")
+                Text(displayName)
                     .font(R.F.body(15, weight: .semibold))
                     .foregroundStyle(R.C.fg1)
                 Text(displayEmail)
@@ -284,8 +301,10 @@ private struct ToggleRow: View {
 #Preview("SettingsView") {
     let nav = NavigationModel()
     let auth = AuthStore()
+    let profile = ProfileStore()
     return SettingsView(nav: nav)
         .environment(auth)
+        .environment(profile)
         .preferredColorScheme(.dark)
 }
 #endif

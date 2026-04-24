@@ -1,17 +1,10 @@
 // AvailabilityView.swift — Screen 21
 //
-// Availability editor for the logged-in artist. Port of
-// `AvailabilityScreen` at ios-app.jsx line 1862. Three controls:
-//
-//   1. 7-column calendar — tap any cell to toggle blocked. Today is
-//      ringed, past dates are dimmed + locked.
-//   2. Base fee slider — monotonic AED fee from 5K to 80K with live
-//      mono-font readout.
-//   3. Tour mode toggle — when on, promoters see "Flexible on travel"
-//      on the artist's public profile.
-//
-// No network writes in this wave — state is local @State. Wire up to
-// the AvailabilityStore + update_artist_availability RPC in Wave 4.
+// Availability editor for the logged-in artist. Wave 5.4: persists live.
+//   - blockedDates: Set<Date> → public.artists.blocked_dates (date[])
+//   - baseFeeK: Double         → public.artists.base_fee
+// Tour mode is still local @State — there's no server column for it yet
+// (Wave 5.5 adds profiles.tour_mode or similar).
 
 import SwiftUI
 import DesignSystem
@@ -21,11 +14,15 @@ import UIKit
 
 public struct AvailabilityView: View {
     @Bindable var nav: NavigationModel
+    @Environment(AuthStore.self) private var auth
+    @Environment(ArtistDetailStore.self) private var artistStore
 
     @State private var visibleMonth: Date = Date()
-    @State private var blockedDates: Set<Date> = [] // startOfDay-normalized
-    @State private var baseFeeK: Double = 28         // fee in thousands of AED
+    @State private var blockedDates: Set<Date> = []
+    @State private var baseFeeK: Double = 28
     @State private var tourMode: Bool = false
+    @State private var isSaving = false
+    @State private var errorMessage: String?
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -35,20 +32,33 @@ public struct AvailabilityView: View {
         VStack(spacing: 0) {
             NavHeader(title: "Availability", onBack: { nav.pop() }) {
                 Button {
-                    save()
+                    Task { await save() }
                 } label: {
-                    Text("Save")
-                        .monoLabel(size: 10, tracking: 0.8, color: R.C.bg0)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 14)
-                        .background {
-                            Capsule().fill(R.C.fg1)
-                        }
+                    if isSaving {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(R.C.bg0)
+                            .frame(width: 38, height: 28)
+                            .background { Capsule().fill(R.C.fg1) }
+                    } else {
+                        Text("Save")
+                            .monoLabel(size: 10, tracking: 0.8, color: R.C.bg0)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 14)
+                            .background {
+                                Capsule().fill(R.C.fg1)
+                            }
+                    }
                 }
                 .buttonStyle(.plain)
+                .disabled(isSaving)
+                .accessibilityLabel("Save availability")
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: R.S.xl) {
+                    if let errorMessage {
+                        errorBanner(errorMessage)
+                    }
                     calendarCard
                     feeCard
                     tourCard
@@ -59,6 +69,78 @@ public struct AvailabilityView: View {
             }
         }
         .background(R.C.bg0)
+        .task {
+            hydrateFromStore()
+        }
+    }
+
+    // MARK: — Seed + save
+
+    private func hydrateFromStore() {
+        guard let myID = artistStore.myArtistID, let detail = artistStore.cache[myID] else {
+            return
+        }
+        blockedDates = detail.blockedDates
+        if let fee = detail.baseFee, fee >= 5_000, fee <= 80_000 {
+            baseFeeK = fee / 1000
+        }
+    }
+
+    private func save() async {
+        guard case .signedIn = auth.state else {
+            errorMessage = "Sign in to save availability."
+            return
+        }
+        guard let artistID = artistStore.myArtistID else {
+            errorMessage = "Your artist profile isn't ready yet. Try again in a moment."
+            return
+        }
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        await artistStore.updateBlockedDates(blockedDates, for: artistID)
+        if let err = artistStore.lastError {
+            errorMessage = err
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            #endif
+            return
+        }
+        await artistStore.updateBaseFee(baseFeeK * 1000, for: artistID)
+        if let err = artistStore.lastError {
+            errorMessage = err
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            #endif
+            return
+        }
+
+        #if canImport(UIKit)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        #endif
+        nav.pop()
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(spacing: R.S.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(R.C.red)
+            Text(message)
+                .font(R.F.body(12, weight: .regular))
+                .foregroundStyle(R.C.fg1)
+            Spacer(minLength: 0)
+        }
+        .padding(R.S.md)
+        .background {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .fill(R.C.red.opacity(0.10))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .strokeBorder(R.C.red.opacity(0.3), lineWidth: R.S.hairline)
+        }
     }
 
     // MARK: — Calendar card
@@ -171,7 +253,7 @@ public struct AvailabilityView: View {
         .glassSurface(cornerRadius: R.Rad.card)
     }
 
-    // MARK: — Tour mode card
+    // MARK: — Tour mode card (local-only — no server column yet)
 
     private var tourCard: some View {
         HStack(alignment: .center, spacing: R.S.md) {
@@ -197,8 +279,8 @@ public struct AvailabilityView: View {
     // MARK: — Helpers
 
     private struct CalendarCell: Hashable {
-        let id: Int                // monotonically increasing for stability
-        let date: Date?            // nil for leading-blank cells
+        let id: Int
+        let date: Date?
         let inCurrentMonth: Bool
     }
 
@@ -208,29 +290,23 @@ public struct AvailabilityView: View {
         return f.string(from: visibleMonth)
     }
 
-    /// Build 6-row × 7-col grid with Mon-first start.
     private var cells: [CalendarCell] {
         let cal = Calendar.current
         var out: [CalendarCell] = []
 
         let monthRange = cal.range(of: .day, in: .month, for: visibleMonth) ?? 1..<31
         let firstOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: visibleMonth))!
-
-        // Mon=2, Sun=1 in Calendar's weekday; we want Mon=0.
         let weekday = (cal.component(.weekday, from: firstOfMonth) + 5) % 7
 
-        // Leading blanks
         for i in 0..<weekday {
             out.append(CalendarCell(id: -1 - i, date: nil, inCurrentMonth: false))
         }
 
-        // Days
         for day in monthRange {
             let date = cal.date(byAdding: .day, value: day - 1, to: firstOfMonth)!
             out.append(CalendarCell(id: day, date: date, inCurrentMonth: true))
         }
 
-        // Trailing blanks to fill 6 rows of 7 cells (42 total)
         while out.count < 42 {
             out.append(CalendarCell(id: -100 - out.count, date: nil, inCurrentMonth: false))
         }
@@ -251,13 +327,6 @@ public struct AvailabilityView: View {
         withAnimation(R.M.easeOutFast) {
             if blockedDates.contains(d) { blockedDates.remove(d) } else { blockedDates.insert(d) }
         }
-    }
-
-    private func save() {
-        #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        #endif
-        nav.pop()
     }
 }
 
@@ -353,7 +422,11 @@ private struct LegendDot: View {
 #if DEBUG
 #Preview("AvailabilityView") {
     let nav = NavigationModel()
+    let auth = AuthStore()
+    let artistStore = ArtistDetailStore()
     return AvailabilityView(nav: nav)
+        .environment(auth)
+        .environment(artistStore)
         .preferredColorScheme(.dark)
 }
 #endif

@@ -21,6 +21,7 @@ public struct AppRoot: View {
     @State private var payments = PaymentsStore()
     @State private var artistDetail = ArtistDetailStore()
     @State private var timeline = TimelineStore()
+    @State private var profile = ProfileStore()
     // AnalyticsStore derives from BookingsStore; constructed lazily so
     // it captures the same instance we inject below.
     @State private var analytics: AnalyticsStore? = nil
@@ -50,6 +51,13 @@ public struct AppRoot: View {
                         inbox.refresh(for: userID)
                         notifications.refresh(for: userID)
                         payments.refresh(for: userID)
+                        profile.refresh(for: userID)
+                        // Resolve the artist's own row on sign-in so
+                        // availability / profile-edit forms have
+                        // something to mutate against.
+                        if svcRole == .artist {
+                            Task { await artistDetail.resolveMyArtistID(userID: userID) }
+                        }
                         if analytics == nil {
                             analytics = AnalyticsStore(bookings: bookings)
                         }
@@ -65,6 +73,7 @@ public struct AppRoot: View {
         .environment(payments)
         .environment(artistDetail)
         .environment(timeline)
+        .environment(profile)
         .environment(analytics ?? AnalyticsStore(bookings: bookings))
         .background(R.C.bg0.ignoresSafeArea())
         .preferredColorScheme(.dark)

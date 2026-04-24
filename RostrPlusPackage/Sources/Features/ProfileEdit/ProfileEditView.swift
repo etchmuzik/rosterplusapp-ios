@@ -1,16 +1,12 @@
 // ProfileEditView.swift — Screen 22
 //
-// Edit the artist's public profile. Port of `ProfileEditScreen` at
-// ios-app.jsx line 2014. Sections:
-//
-//   1. Avatar + stage name + genre
-//   2. Bio — multi-line text field
-//   3. Gallery — 3-column image grid with +add tile (Wave 4: wire uploads)
-//   4. Rider — attached PDF pill with "replace" action
-//   5. Socials — IG / SoundCloud / Spotify inputs with glyph chips
-//
-// No real uploads in Wave 3 — all fields are local @State. Wave 4
-// ships the Supabase storage wire-up to the `artist-media` bucket.
+// Edit the artist's public profile. Wave 5.4: persists live.
+//   - Stage name + primary genre + socials → public.artists via
+//     ArtistDetailStore.updateProfileCore(...)
+//   - Bio → public.profiles.bio via ProfileStore.update(...)
+// Saves fire on the Save button with haptic feedback and an inline
+// error banner on failure. Gallery + rider upload still deferred to
+// Wave 5.6 (Supabase Storage wire-up).
 
 import SwiftUI
 import DesignSystem
@@ -20,14 +16,20 @@ import UIKit
 
 public struct ProfileEditView: View {
     @Bindable var nav: NavigationModel
+    @Environment(AuthStore.self) private var auth
+    @Environment(ProfileStore.self) private var profileStore
+    @Environment(ArtistDetailStore.self) private var artistStore
 
-    @State private var stageName: String = "NOVAK"
-    @State private var genre: String = "Tech House"
-    @State private var bio: String = "Dubai-based selector building long, patient sets. Residencies at WHITE + Soho Garden."
-    @State private var instagram: String = "@dj.novak"
-    @State private var soundcloud: String = "novakdxb"
-    @State private var spotify: String = "0nov4kxx"
-    @State private var gallery: [String] = ["Gallery1", "Gallery2", "Gallery3"]
+    // Local editable state — seeded from the stores in `.task`.
+    @State private var stageName: String = ""
+    @State private var genre: String = ""
+    @State private var bio: String = ""
+    @State private var instagram: String = ""
+    @State private var soundcloud: String = ""
+    @State private var spotify: String = ""
+    @State private var gallery: [String] = []
+    @State private var isSaving = false
+    @State private var errorMessage: String?
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -36,17 +38,30 @@ public struct ProfileEditView: View {
     public var body: some View {
         VStack(spacing: 0) {
             NavHeader(title: "Edit profile", onBack: { nav.pop() }) {
-                Button(action: save) {
-                    Text("Save")
-                        .monoLabel(size: 10, tracking: 0.8, color: R.C.bg0)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 14)
-                        .background { Capsule().fill(R.C.fg1) }
+                Button(action: { Task { await save() } }) {
+                    if isSaving {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(R.C.bg0)
+                            .frame(width: 38, height: 28)
+                            .background { Capsule().fill(R.C.fg1) }
+                    } else {
+                        Text("Save")
+                            .monoLabel(size: 10, tracking: 0.8, color: R.C.bg0)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 14)
+                            .background { Capsule().fill(R.C.fg1) }
+                    }
                 }
                 .buttonStyle(.plain)
+                .disabled(isSaving)
+                .accessibilityLabel("Save profile")
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: R.S.xl) {
+                    if let errorMessage {
+                        errorBanner(errorMessage)
+                    }
                     headerCard
                     bioCard
                     galleryCard
@@ -59,6 +74,92 @@ public struct ProfileEditView: View {
             }
         }
         .background(R.C.bg0)
+        .task {
+            hydrateFromStores()
+        }
+    }
+
+    // MARK: — Seeding + save
+
+    private func hydrateFromStores() {
+        if let profile = profileStore.current {
+            bio = profile.bio ?? ""
+        }
+        if let myID = artistStore.myArtistID, let detail = artistStore.cache[myID] {
+            stageName = detail.stageName
+            genre = detail.genres.first ?? ""
+            instagram = detail.social?.instagram ?? ""
+            soundcloud = detail.social?.soundcloud ?? ""
+            spotify = detail.social?.spotify ?? ""
+        }
+    }
+
+    private func save() async {
+        guard case .signedIn(let userID, _, _) = auth.state else {
+            errorMessage = "Sign in to save changes."
+            return
+        }
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        // Persist bio to profiles (always safe — even for promoters).
+        await profileStore.update(userID: userID, bio: bio)
+        if let err = profileStore.lastError {
+            errorMessage = err
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            #endif
+            return
+        }
+
+        // Artist-side fields land on public.artists.
+        if let artistID = artistStore.myArtistID {
+            let social = ArtistDTO.SocialLinks(
+                instagram: instagram.nilIfEmpty,
+                soundcloud: soundcloud.nilIfEmpty,
+                spotify: spotify.nilIfEmpty
+            )
+            await artistStore.updateProfileCore(
+                artistID: artistID,
+                stageName: stageName.trimmingCharacters(in: .whitespaces).nilIfEmpty,
+                primaryGenre: genre.trimmingCharacters(in: .whitespaces).nilIfEmpty,
+                social: social
+            )
+            if let err = artistStore.lastError {
+                errorMessage = err
+                #if canImport(UIKit)
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                #endif
+                return
+            }
+        }
+
+        #if canImport(UIKit)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        #endif
+        nav.pop()
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(spacing: R.S.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(R.C.red)
+            Text(message)
+                .font(R.F.body(12, weight: .regular))
+                .foregroundStyle(R.C.fg1)
+            Spacer(minLength: 0)
+        }
+        .padding(R.S.md)
+        .background {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .fill(R.C.red.opacity(0.10))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .strokeBorder(R.C.red.opacity(0.3), lineWidth: R.S.hairline)
+        }
     }
 
     // MARK: — Header card
@@ -66,12 +167,12 @@ public struct ProfileEditView: View {
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: R.S.md) {
             HStack(alignment: .center, spacing: R.S.md) {
-                Cover(seed: stageName, size: 64, cornerRadius: R.Rad.card)
+                Cover(seed: stageName.isEmpty ? "Artist" : stageName, size: 64, cornerRadius: R.Rad.card)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Profile photo")
                         .monoLabel(size: 9.5, tracking: 0.6, color: R.C.fg3)
                     Button {
-                        // Wave 4: trigger UIImagePicker / PhotosPicker
+                        // Wave 5.6: Supabase Storage upload.
                     } label: {
                         Text("Change")
                             .font(R.F.mono(10, weight: .semibold))
@@ -108,7 +209,7 @@ public struct ProfileEditView: View {
                     .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
                 Spacer()
                 Text("\(bio.count) / 240")
-                    .monoLabel(size: 8.5, tracking: 0.5, color: R.C.fg3)
+                    .monoLabel(size: 8.5, tracking: 0.5, color: bio.count > 240 ? R.C.red : R.C.fg3)
             }
             TextEditor(text: $bio)
                 .font(R.F.body(14))
@@ -129,7 +230,7 @@ public struct ProfileEditView: View {
         .glassSurface(cornerRadius: R.Rad.card)
     }
 
-    // MARK: — Gallery card
+    // MARK: — Gallery card (still local-only until Wave 5.6)
 
     private var galleryCard: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
@@ -168,7 +269,7 @@ public struct ProfileEditView: View {
 
     private var addTile: some View {
         Button {
-            // Wave 4: real picker
+            // Wave 5.6: real picker
             gallery.append("NewPhoto-\(gallery.count)")
         } label: {
             ZStack {
@@ -191,7 +292,7 @@ public struct ProfileEditView: View {
         .accessibilityLabel("Add photo")
     }
 
-    // MARK: — Rider card
+    // MARK: — Rider card (deferred to Wave 5.6 file uploads)
 
     private var riderCard: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
@@ -207,17 +308,20 @@ public struct ProfileEditView: View {
                             .fill(R.C.glassLo)
                     }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("novak-rider-v3.pdf")
+                    Text("No rider attached")
                         .font(R.F.body(13, weight: .semibold))
                         .foregroundStyle(R.C.fg1)
-                    Text("842 KB · Updated 12 Apr")
-                        .monoLabel(size: 8.5, tracking: 0.5, color: R.C.fg3)
+                    Text("Upload a PDF — promoters see it on every booking request.")
+                        .font(R.F.mono(8.5, weight: .medium))
+                        .tracking(0.5)
+                        .foregroundStyle(R.C.fg3)
+                        .lineLimit(2)
                 }
                 Spacer()
                 Button {
-                    // Wave 4: file picker
+                    // Wave 5.6: Supabase Storage uploader.
                 } label: {
-                    Text("Replace")
+                    Text("Attach")
                         .font(R.F.mono(9.5, weight: .semibold))
                         .tracking(0.6)
                         .textCase(.uppercase)
@@ -309,19 +413,24 @@ public struct ProfileEditView: View {
             }
         }
     }
+}
 
-    private func save() {
-        #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        #endif
-        nav.pop()
+private extension String {
+    var nilIfEmpty: String? {
+        self.isEmpty ? nil : self
     }
 }
 
 #if DEBUG
 #Preview("ProfileEditView") {
     let nav = NavigationModel()
+    let auth = AuthStore()
+    let profile = ProfileStore()
+    let artistStore = ArtistDetailStore()
     return ProfileEditView(nav: nav)
+        .environment(auth)
+        .environment(profile)
+        .environment(artistStore)
         .preferredColorScheme(.dark)
 }
 #endif
