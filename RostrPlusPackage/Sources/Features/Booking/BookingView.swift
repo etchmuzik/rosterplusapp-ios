@@ -1,0 +1,314 @@
+// BookingView.swift — Screen 05
+//
+// Three-step booking wizard. Port of `BookingScreen` at ios-app.jsx
+// line 507. Steps:
+//
+//   1. Event — date, time, venue
+//   2. Fee   — amount input + currency pill  (shows conflict banner if any)
+//   3. Review— confirm + send
+//
+// The conflict banner in step 2 is amber. In production it will be
+// driven by the `check_availability` Supabase RPC; here it's on a
+// mock toggle so visual parity is provable without server round-trips.
+
+import SwiftUI
+import DesignSystem
+#if canImport(UIKit)
+import UIKit
+#endif
+
+public struct BookingView: View {
+    @Bindable var nav: NavigationModel
+    let artistID: String
+
+    @State private var step: Int = 1
+
+    // Step 1
+    @State private var eventDate: Date = Date().addingTimeInterval(86_400 * 7)
+    @State private var eventTime: Date = Calendar.current.date(from: DateComponents(hour: 23)) ?? Date()
+    @State private var venue: String = ""
+
+    // Step 2
+    @State private var fee: String = ""
+    @State private var currency: String = "AED"
+    @State private var hasConflict: Bool = false  // toggle in previews to see banner
+
+    public init(nav: NavigationModel, artistID: String) {
+        self.nav = nav
+        self.artistID = artistID
+    }
+
+    public var body: some View {
+        VStack(spacing: 0) {
+            NavHeader(title: "Request booking", onBack: { nav.pop() })
+            progressBar
+                .padding(.horizontal, R.S.lg)
+                .padding(.top, R.S.xs)
+            ScrollView {
+                VStack(alignment: .leading, spacing: R.S.lg) {
+                    stepContent
+                        .padding(.horizontal, R.S.lg)
+                        .padding(.top, R.S.lg)
+                    Color.clear.frame(height: 120)
+                }
+            }
+            footerActions
+        }
+        .background(R.C.bg0)
+    }
+
+    // MARK: — Progress bar
+
+    private var progressBar: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 99, style: .continuous)
+                    .fill(i < step ? R.C.fg1 : R.C.glassLo)
+                    .frame(height: 3)
+            }
+        }
+    }
+
+    // MARK: — Step content
+
+    @ViewBuilder
+    private var stepContent: some View {
+        switch step {
+        case 1: step1
+        case 2: step2
+        default: step3
+        }
+    }
+
+    // Step 1 — Event
+
+    private var step1: some View {
+        VStack(alignment: .leading, spacing: R.S.md) {
+            SectionLabel("Step 1 of 3 · Event")
+            FieldLabel("Date")
+            DatePicker("", selection: $eventDate, displayedComponents: [.date])
+                .datePickerStyle(.compact)
+                .labelsHidden()
+                .tint(R.C.amber)
+            FieldLabel("Start time")
+            DatePicker("", selection: $eventTime, displayedComponents: [.hourAndMinute])
+                .datePickerStyle(.compact)
+                .labelsHidden()
+                .tint(R.C.amber)
+            FieldLabel("Venue")
+            TextField("e.g. WHITE Dubai", text: $venue, prompt:
+                Text("e.g. WHITE Dubai").foregroundStyle(R.C.fg3)
+            )
+            .textFieldStyle(GlassFieldStyle())
+        }
+    }
+
+    // Step 2 — Fee
+
+    private var step2: some View {
+        VStack(alignment: .leading, spacing: R.S.md) {
+            SectionLabel("Step 2 of 3 · Fee")
+            if hasConflict {
+                ConflictBanner()
+            }
+            FieldLabel("Amount")
+            HStack(spacing: R.S.sm) {
+                Menu {
+                    ForEach(["AED", "SAR", "USD", "EUR"], id: \.self) { c in
+                        Button(c) { currency = c }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(currency)
+                            .font(R.F.mono(12, weight: .semibold))
+                            .tracking(0.6)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .foregroundStyle(R.C.fg1)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 11)
+                    .background {
+                        RoundedRectangle(cornerRadius: R.Rad.button, style: .continuous)
+                            .fill(R.C.glassLo)
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: R.Rad.button, style: .continuous)
+                            .strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline)
+                    }
+                }
+                TextField("28,000", text: $fee, prompt:
+                    Text("28,000").foregroundStyle(R.C.fg3)
+                )
+                .keyboardType(.numberPad)
+                .textFieldStyle(GlassFieldStyle())
+            }
+
+            Text("Quote before platform fees. Artist gets push + email the moment you send.")
+                .font(R.F.body(12, weight: .regular))
+                .foregroundStyle(R.C.fg3)
+                .padding(.top, R.S.xs)
+        }
+    }
+
+    // Step 3 — Review
+
+    private var step3: some View {
+        VStack(alignment: .leading, spacing: R.S.md) {
+            SectionLabel("Step 3 of 3 · Review")
+            ReviewRow(label: "Artist",  value: displayArtist)
+            ReviewRow(label: "Date",    value: eventDate.formatted(date: .abbreviated, time: .omitted))
+            ReviewRow(label: "Time",    value: eventTime.formatted(date: .omitted, time: .shortened))
+            ReviewRow(label: "Venue",   value: venue.isEmpty ? "—" : venue)
+            ReviewRow(label: "Fee",     value: fee.isEmpty ? "—" : "\(currency) \(fee)", isMono: true)
+        }
+    }
+
+    private var displayArtist: String {
+        MockData.artists.first(where: { String($0.id) == artistID })?.stage ?? "Artist"
+    }
+
+    // MARK: — Footer actions
+
+    private var footerActions: some View {
+        HStack(spacing: R.S.sm) {
+            if step > 1 {
+                PrimaryButton("Back", variant: .ghost) {
+                    withAnimation(R.M.easeOut) { step -= 1 }
+                }
+            }
+            PrimaryButton(
+                step == 3 ? "Send request" : "Continue",
+                variant: .filled
+            ) {
+                if step == 3 {
+                    submit()
+                } else {
+                    withAnimation(R.M.easeOut) { step += 1 }
+                }
+            }
+            .layoutPriority(1)
+        }
+        .padding(.horizontal, R.S.lg)
+        .padding(.vertical, R.S.md)
+        .background {
+            LinearGradient(
+                colors: [R.C.bg0.opacity(0.0), R.C.bg0.opacity(0.95), R.C.bg0],
+                startPoint: .top, endPoint: .bottom
+            )
+            .frame(height: 140)
+            .allowsHitTesting(false)
+        }
+    }
+
+    private func submit() {
+        #if canImport(UIKit)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        #endif
+        nav.pop()
+    }
+}
+
+// MARK: - Section + field labels
+
+private struct SectionLabel: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text)
+            .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
+    }
+}
+
+private struct FieldLabel: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text)
+            .font(R.F.mono(9, weight: .semibold))
+            .tracking(0.6)
+            .textCase(.uppercase)
+            .foregroundStyle(R.C.fg2)
+            .padding(.top, R.S.xs)
+    }
+}
+
+// MARK: - Review row
+
+private struct ReviewRow: View {
+    let label: String
+    let value: String
+    var isMono: Bool = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .monoLabel(size: 9, tracking: 0.6, color: R.C.fg3)
+            Spacer()
+            Text(value)
+                .font(isMono
+                      ? R.F.mono(13, weight: .semibold)
+                      : R.F.body(13, weight: .semibold))
+                .foregroundStyle(R.C.fg1)
+        }
+        .padding(R.S.md)
+        .glassSurface(cornerRadius: R.Rad.button2, intensity: .soft)
+    }
+}
+
+// MARK: - Conflict banner
+
+private struct ConflictBanner: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: R.S.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(R.C.amber)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Potential conflict")
+                    .font(R.F.body(13, weight: .semibold))
+                    .foregroundStyle(R.C.fg1)
+                Text("Artist has an existing booking on this date. You can still send — they'll decline if it clashes.")
+                    .font(R.F.body(12, weight: .regular))
+                    .foregroundStyle(R.C.fg2)
+            }
+        }
+        .padding(R.S.md)
+        .background {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .fill(Color(hex: 0xe9cf92, opacity: 0.08))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .strokeBorder(Color(hex: 0xe9cf92, opacity: 0.24), lineWidth: R.S.hairline)
+        }
+    }
+}
+
+// MARK: - Glass text-field style
+
+private struct GlassFieldStyle: TextFieldStyle {
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .foregroundStyle(R.C.fg1)
+            .font(R.F.body(14))
+            .padding(.horizontal, R.S.md)
+            .padding(.vertical, 11)
+            .background {
+                RoundedRectangle(cornerRadius: R.Rad.button, style: .continuous)
+                    .fill(R.C.glassLo)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: R.Rad.button, style: .continuous)
+                    .strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline)
+            }
+    }
+}
+
+#if DEBUG
+#Preview("BookingView — Step 1") {
+    let nav = NavigationModel()
+    return BookingView(nav: nav, artistID: "1")
+        .preferredColorScheme(.dark)
+}
+#endif

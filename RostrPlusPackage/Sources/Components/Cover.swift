@@ -14,10 +14,13 @@ import DesignSystem
 
 public struct Cover: View {
     let seed: String
-    let size: CGFloat
+    let size: CGFloat?
     let cornerRadius: CGFloat
 
-    public init(seed: String, size: CGFloat = 44, cornerRadius: CGFloat = R.Rad.md) {
+    /// Seeded gradient tile. Pass `size: nil` to let the caller control
+    /// sizing via `.frame(...)` — used by RosterView's 2-column grid
+    /// which wants a fluid-width square.
+    public init(seed: String, size: CGFloat? = 44, cornerRadius: CGFloat = R.Rad.md) {
         self.seed = seed
         self.size = size
         self.cornerRadius = cornerRadius
@@ -58,6 +61,7 @@ public struct Cover: View {
                     .strokeBorder(R.C.borderHair, lineWidth: R.S.hairline)
             }
             .frame(width: size, height: size)
+            // When size == nil, consumer drives the frame.
     }
 
     // MARK: Hash

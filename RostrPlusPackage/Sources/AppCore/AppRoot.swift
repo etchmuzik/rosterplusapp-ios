@@ -1,12 +1,13 @@
 // AppRoot.swift
 //
-// The top-level view for the app. Mirrors the big switch at the bottom
-// of InteractiveDevice in ios-app.jsx (line 767-786): pick a tab-root
-// screen, then overlay any detail route from nav.stack on top.
+// Top-level view. Picks the tab-root screen, then overlays any detail
+// route from nav.stack on top. Mirrors the big switch at the bottom of
+// InteractiveDevice in ios-app.jsx.
 //
-// Placeholder views are used for every screen not yet implemented in
-// Wave 1 — they render a friendly "Coming in Wave N" card in the same
-// glass treatment so visual parity is still intact.
+// Wave 2 wires the promoter core loop — Home, Roster, Bookings, Inbox
+// + all their detail screens. Screens not yet implemented fall back
+// to a placeholder that renders in the same glass treatment so visual
+// parity stays intact.
 
 import SwiftUI
 import DesignSystem
@@ -19,12 +20,16 @@ public struct AppRoot: View {
     public var body: some View {
         ZStack(alignment: .bottom) {
             rootScreen
-                .ignoresSafeArea(edges: .bottom) // tab bar is floating
+                .ignoresSafeArea(edges: .bottom)
             TabBar(active: Binding(
                 get: { nav.tab },
                 set: { nav.setTab($0) }
             ))
             .padding(.bottom, R.S.xxl)
+            // Hide the tab bar when a detail route is pushed so it
+            // doesn't cover the sticky action bar on detail screens.
+            .opacity(nav.top == nil ? 1 : 0)
+            .allowsHitTesting(nav.top == nil)
         }
         .environment(nav)
         .background(R.C.bg0.ignoresSafeArea())
@@ -35,8 +40,6 @@ public struct AppRoot: View {
 
     @ViewBuilder
     private var rootScreen: some View {
-        // Detail overlay wins. If the stack has anything, render the top
-        // detail route full-screen. Otherwise fall back to the tab root.
         if let top = nav.top {
             DetailRouter(route: top, nav: nav)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -63,20 +66,11 @@ private struct TabRootRouter: View {
                 HomeView(nav: nav)
             }
         case .roster:
-            PlaceholderScreen(
-                title: "Roster",
-                note: "Wave 2 — core promoter loop."
-            )
+            RosterView(nav: nav)
         case .bookings:
-            PlaceholderScreen(
-                title: "Bookings",
-                note: "Wave 2 — with chart icon → analytics + review prompt."
-            )
+            BookingsView(nav: nav)
         case .inbox:
-            PlaceholderScreen(
-                title: "Inbox",
-                note: "Wave 2 — threads + real-time on public.messages."
-            )
+            InboxView(nav: nav)
         case .me:
             PlaceholderScreen(
                 title: "Me / Settings",
@@ -93,64 +87,52 @@ private struct DetailRouter: View {
     @Bindable var nav: NavigationModel
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Shared back-header for every detail screen. Kept inline
-            // here because it's one of those "used 12 times, defined in
-            // one place" widgets — nothing else needs to render it.
-            HStack {
-                Button {
-                    nav.pop()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("Back")
-                            .font(R.F.mono(10, weight: .semibold))
-                            .tracking(0.6)
-                            .textCase(.uppercase)
-                    }
-                    .foregroundStyle(R.C.fg1)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Back")
-                Spacer()
-            }
-            .padding(.horizontal, R.S.lg)
-            .padding(.top, R.S.md)
+        Group {
+            switch route {
+            case .artist(let id):
+                // Look up the mock artist; fall back to the first if not found.
+                let artist = MockData.artists.first { String($0.id) == id } ?? MockData.artists[0]
+                ArtistView(nav: nav, artist: artist)
 
-            PlaceholderScreen(
-                title: routeTitle,
-                note: "Detail stub. Full screen lands in its wave."
-            )
+            case .booking(let artistID):
+                BookingView(nav: nav, artistID: artistID)
+
+            case .bookingDetail(let id):
+                BookingDetailView(nav: nav, bookingID: id)
+
+            case .contract(let id):
+                ContractView(nav: nav, contractID: id)
+
+            case .thread(let id):
+                ThreadView(nav: nav, threadID: id)
+
+            case .invoice(let id):
+                InvoiceView(nav: nav, bookingID: id)
+
+            // Later-wave routes render a friendly stub for now.
+            case .notifications:  stub("Notifications",  "Wave 4 — activity feed with 7 types.")
+            case .review:         stub("Leave a review", "Wave 4 — mutual 3-day review flow.")
+            case .claim:          stub("Claim profile",  "Wave 4.")
+            case .availability:   stub("Availability",   "Wave 3 — tappable 7-col calendar.")
+            case .profileEdit:    stub("Edit profile",   "Wave 3.")
+            case .epk:            stub("EPK",            "Wave 3 — shareable press kit.")
+            case .signIn:         stub("Sign in",        "Wave 5 — Apple + Google OAuth.")
+            case .onboard:        stub("Welcome",        "Wave 5 — first-launch carousel.")
+            }
         }
         .background(R.C.bg0)
     }
 
-    private var routeTitle: String {
-        switch route {
-        case .artist:         return "Artist profile"
-        case .booking:        return "Request booking"
-        case .bookingDetail:  return "Booking detail"
-        case .thread:         return "Message thread"
-        case .epk:            return "EPK"
-        case .contract:       return "Contract"
-        case .notifications:  return "Notifications"
-        case .review:         return "Leave a review"
-        case .claim:          return "Claim profile"
-        case .availability:   return "Availability"
-        case .profileEdit:    return "Edit profile"
-        case .invoice:        return "Invoice"
-        case .signIn:         return "Sign in"
-        case .onboard:        return "Welcome"
+    private func stub(_ title: String, _ note: String) -> some View {
+        VStack(spacing: 0) {
+            NavHeader(title: title, onBack: { nav.pop() })
+            PlaceholderScreen(title: title, note: note)
         }
     }
 }
 
 // MARK: - Placeholder
 
-/// Used for screens scheduled in later waves. Renders in the same glass
-/// treatment so visual parity is intact when you swap it for the real
-/// view later.
 private struct PlaceholderScreen: View {
     let title: String
     let note: String
