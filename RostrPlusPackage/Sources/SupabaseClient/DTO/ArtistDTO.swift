@@ -29,6 +29,12 @@ public struct ArtistDTO: Codable, Hashable, Sendable, Identifiable {
     /// Drives AvailabilityView's red cells + server-side conflict
     /// checks when a promoter requests a booking.
     public let blockedDates: [String]?
+    /// "Flexible on travel" flag surfaced to promoters in other cities.
+    public let tourMode: Bool?
+    /// Public URLs of gallery images in `artist-media/<uid>/gallery/`.
+    public let epkGallery: [String]?
+    /// Public URL of the uploaded technical rider PDF, if any.
+    public let riderURL: String?
 
     /// Shape of each element inside the `press_quotes` JSONB array.
     /// Matches what the web admin tool writes: { outlet, quote }.
@@ -72,6 +78,9 @@ public struct ArtistDTO: Codable, Hashable, Sendable, Identifiable {
         case pastPerformances = "past_performances"
         case socialLinks      = "social_links"
         case blockedDates     = "blocked_dates"
+        case tourMode         = "tour_mode"
+        case epkGallery       = "epk_gallery"
+        case riderURL         = "rider_url"
     }
 
     /// Compact list-view columns — what RosterStore asks for. Keeps the
@@ -80,11 +89,12 @@ public struct ArtistDTO: Codable, Hashable, Sendable, Identifiable {
         "id,stage_name,genre,cities_active,base_fee,currency,rating,verified,status"
 
     /// Full detail columns — what ArtistView + EPKView ask for. Includes
-    /// the press/performance JSONB, social handles, and blocked_dates
-    /// for the AvailabilityView calendar.
+    /// the press/performance JSONB, social handles, blocked_dates for
+    /// the AvailabilityView calendar, and the tour_mode flag.
     public static let selectFieldsDetail = """
     id,profile_id,stage_name,genre,cities_active,base_fee,currency,\
     rating,total_bookings,verified,status,epk_url,press_quotes,\
-    past_performances,social_links,blocked_dates
+    past_performances,social_links,blocked_dates,tour_mode,\
+    epk_gallery,rider_url
     """
 }

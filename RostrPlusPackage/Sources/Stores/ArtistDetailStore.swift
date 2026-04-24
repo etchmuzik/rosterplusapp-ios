@@ -29,6 +29,12 @@ public struct ArtistDetail: Identifiable, Hashable, Sendable {
     public let social: ArtistDTO.SocialLinks?
     /// startOfDay-normalized dates the artist has blocked off.
     public let blockedDates: Set<Date>
+    /// "Flexible on travel" flag — shows on promoter discovery.
+    public let tourMode: Bool
+    /// Uploaded gallery image URLs (artist-media/<uid>/gallery/).
+    public let galleryURLs: [String]
+    /// Uploaded rider PDF URL (artist-media/<uid>/rider/), if any.
+    public let riderURL: String?
 
     public init(
         id: UUID,
@@ -44,7 +50,10 @@ public struct ArtistDetail: Identifiable, Hashable, Sendable {
         pressQuotes: [ArtistDTO.PressQuote],
         pastPerformances: [ArtistDTO.PastPerformance],
         social: ArtistDTO.SocialLinks?,
-        blockedDates: Set<Date> = []
+        blockedDates: Set<Date> = [],
+        tourMode: Bool = false,
+        galleryURLs: [String] = [],
+        riderURL: String? = nil
     ) {
         self.id = id
         self.stageName = stageName
@@ -60,6 +69,9 @@ public struct ArtistDetail: Identifiable, Hashable, Sendable {
         self.pastPerformances = pastPerformances
         self.social = social
         self.blockedDates = blockedDates
+        self.tourMode = tourMode
+        self.galleryURLs = galleryURLs
+        self.riderURL = riderURL
     }
 }
 
@@ -180,7 +192,10 @@ public final class ArtistDetailStore {
             pressQuotes: dto.pressQuotes ?? [],
             pastPerformances: dto.pastPerformances ?? [],
             social: dto.socialLinks,
-            blockedDates: blocked
+            blockedDates: blocked,
+            tourMode: dto.tourMode ?? false,
+            galleryURLs: dto.epkGallery ?? [],
+            riderURL: dto.riderURL
         )
     }
 
@@ -211,6 +226,105 @@ public final class ArtistDetailStore {
             _ = try await client
                 .from("artists")
                 .update(Patch(blocked_dates: payload))
+                .eq("id", value: artistID)
+                .execute()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    /// Append a URL onto epk_gallery. The uploader already pushed the
+    /// bytes to Storage; this just records the public URL so other
+    /// screens (EPK, artist profile) can render it.
+    public func addGalleryImageURL(_ url: String, for artistID: UUID) async {
+        lastError = nil
+        var next = cache[artistID]?.galleryURLs ?? []
+        guard !next.contains(url) else { return }
+        next.append(url)
+        if let existing = cache[artistID] {
+            let merged = Self.withGalleryURLs(existing, urls: next)
+            cache[artistID] = merged
+            if case .loaded(let shown) = state, shown.id == artistID {
+                state = .loaded(merged)
+            }
+        }
+        struct Patch: Encodable { let epk_gallery: [String] }
+        do {
+            _ = try await client
+                .from("artists")
+                .update(Patch(epk_gallery: next))
+                .eq("id", value: artistID)
+                .execute()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    /// Remove a URL from epk_gallery. The Storage object itself stays —
+    /// dropping the reference is cheap and cleanup can be a cron job
+    /// later. Tapping the ✕ on a thumbnail routes here.
+    public func removeGalleryImage(_ url: String, for artistID: UUID) async {
+        lastError = nil
+        var next = cache[artistID]?.galleryURLs ?? []
+        next.removeAll { $0 == url }
+        if let existing = cache[artistID] {
+            let merged = Self.withGalleryURLs(existing, urls: next)
+            cache[artistID] = merged
+            if case .loaded(let shown) = state, shown.id == artistID {
+                state = .loaded(merged)
+            }
+        }
+        struct Patch: Encodable { let epk_gallery: [String] }
+        do {
+            _ = try await client
+                .from("artists")
+                .update(Patch(epk_gallery: next))
+                .eq("id", value: artistID)
+                .execute()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    /// Patch rider_url with the public URL of a newly-uploaded PDF.
+    /// Pass nil to detach the current rider.
+    public func updateRiderURL(_ url: String?, for artistID: UUID) async {
+        lastError = nil
+        if let existing = cache[artistID] {
+            let merged = Self.withRiderURL(existing, url: url)
+            cache[artistID] = merged
+            if case .loaded(let shown) = state, shown.id == artistID {
+                state = .loaded(merged)
+            }
+        }
+        struct Patch: Encodable { let rider_url: String? }
+        do {
+            _ = try await client
+                .from("artists")
+                .update(Patch(rider_url: url))
+                .eq("id", value: artistID)
+                .execute()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    /// Persist the tour_mode flag on public.artists. Powers the
+    /// "Flexible on travel" toggle in AvailabilityView.
+    public func updateTourMode(_ on: Bool, for artistID: UUID) async {
+        lastError = nil
+        if let existing = cache[artistID] {
+            let merged = Self.withTourMode(existing, tourMode: on)
+            cache[artistID] = merged
+            if case .loaded(let shown) = state, shown.id == artistID {
+                state = .loaded(merged)
+            }
+        }
+        struct Patch: Encodable { let tour_mode: Bool }
+        do {
+            _ = try await client
+                .from("artists")
+                .update(Patch(tour_mode: on))
                 .eq("id", value: artistID)
                 .execute()
         } catch {
@@ -294,7 +408,8 @@ public final class ArtistDetailStore {
             totalBookings: d.totalBookings, verified: d.verified,
             epkURL: d.epkURL, pressQuotes: d.pressQuotes,
             pastPerformances: d.pastPerformances, social: d.social,
-            blockedDates: dates
+            blockedDates: dates, tourMode: d.tourMode,
+            galleryURLs: d.galleryURLs, riderURL: d.riderURL
         )
     }
 
@@ -306,7 +421,47 @@ public final class ArtistDetailStore {
             totalBookings: d.totalBookings, verified: d.verified,
             epkURL: d.epkURL, pressQuotes: d.pressQuotes,
             pastPerformances: d.pastPerformances, social: d.social,
-            blockedDates: d.blockedDates
+            blockedDates: d.blockedDates, tourMode: d.tourMode,
+            galleryURLs: d.galleryURLs, riderURL: d.riderURL
+        )
+    }
+
+    private static func withTourMode(_ d: ArtistDetail, tourMode: Bool) -> ArtistDetail {
+        ArtistDetail(
+            id: d.id, stageName: d.stageName, genres: d.genres,
+            citiesActive: d.citiesActive, baseFee: d.baseFee,
+            currency: d.currency, rating: d.rating,
+            totalBookings: d.totalBookings, verified: d.verified,
+            epkURL: d.epkURL, pressQuotes: d.pressQuotes,
+            pastPerformances: d.pastPerformances, social: d.social,
+            blockedDates: d.blockedDates, tourMode: tourMode,
+            galleryURLs: d.galleryURLs, riderURL: d.riderURL
+        )
+    }
+
+    private static func withGalleryURLs(_ d: ArtistDetail, urls: [String]) -> ArtistDetail {
+        ArtistDetail(
+            id: d.id, stageName: d.stageName, genres: d.genres,
+            citiesActive: d.citiesActive, baseFee: d.baseFee,
+            currency: d.currency, rating: d.rating,
+            totalBookings: d.totalBookings, verified: d.verified,
+            epkURL: d.epkURL, pressQuotes: d.pressQuotes,
+            pastPerformances: d.pastPerformances, social: d.social,
+            blockedDates: d.blockedDates, tourMode: d.tourMode,
+            galleryURLs: urls, riderURL: d.riderURL
+        )
+    }
+
+    private static func withRiderURL(_ d: ArtistDetail, url: String?) -> ArtistDetail {
+        ArtistDetail(
+            id: d.id, stageName: d.stageName, genres: d.genres,
+            citiesActive: d.citiesActive, baseFee: d.baseFee,
+            currency: d.currency, rating: d.rating,
+            totalBookings: d.totalBookings, verified: d.verified,
+            epkURL: d.epkURL, pressQuotes: d.pressQuotes,
+            pastPerformances: d.pastPerformances, social: d.social,
+            blockedDates: d.blockedDates, tourMode: d.tourMode,
+            galleryURLs: d.galleryURLs, riderURL: url
         )
     }
 
@@ -339,7 +494,10 @@ public final class ArtistDetailStore {
             pressQuotes: d.pressQuotes,
             pastPerformances: d.pastPerformances,
             social: social ?? d.social,
-            blockedDates: d.blockedDates
+            blockedDates: d.blockedDates,
+            tourMode: d.tourMode,
+            galleryURLs: d.galleryURLs,
+            riderURL: d.riderURL
         )
     }
 

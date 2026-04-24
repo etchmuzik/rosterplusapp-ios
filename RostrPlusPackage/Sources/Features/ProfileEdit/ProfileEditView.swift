@@ -13,6 +13,7 @@
 
 import SwiftUI
 import PhotosUI
+import UniformTypeIdentifiers
 import DesignSystem
 #if canImport(UIKit)
 import UIKit
@@ -39,6 +40,15 @@ public struct ProfileEditView: View {
     @State private var avatarURL: URL?
     @State private var avatarPickerItem: PhotosPickerItem?
     @State private var isUploadingAvatar = false
+
+    // Gallery upload.
+    @State private var galleryPickerItem: PhotosPickerItem?
+    @State private var isUploadingGallery = false
+
+    // Rider upload.
+    @State private var riderURL: URL?
+    @State private var isUploadingRider = false
+    @State private var isRiderImporterPresented = false
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -103,6 +113,8 @@ public struct ProfileEditView: View {
             instagram = detail.social?.instagram ?? ""
             soundcloud = detail.social?.soundcloud ?? ""
             spotify = detail.social?.spotify ?? ""
+            gallery = detail.galleryURLs
+            riderURL = detail.riderURL.flatMap { URL(string: $0) }
         }
     }
 
@@ -138,6 +150,126 @@ public struct ProfileEditView: View {
                 return
             }
             avatarURL = uploaded.publicURL
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            #endif
+        } catch let error as RostrStorageError {
+            errorMessage = Self.humanise(error)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Handle a PhotosPicker selection for the gallery. Uploads the
+    /// image, then appends its public URL to artists.epk_gallery.
+    private func handleGallerySelection(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        guard case .signedIn(let userID, _, _) = auth.state else {
+            errorMessage = "Sign in to upload a photo."
+            return
+        }
+        guard let artistID = artistStore.myArtistID else {
+            errorMessage = "Your artist profile isn't ready yet. Try again in a moment."
+            return
+        }
+        isUploadingGallery = true
+        errorMessage = nil
+        defer {
+            isUploadingGallery = false
+            galleryPickerItem = nil
+        }
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                errorMessage = "Couldn't read the selected photo."
+                return
+            }
+            let (ext, mime) = Self.imageEncoding(for: data)
+            let uploaded = try await RostrStorage.upload(
+                data: data,
+                kind: .gallery,
+                extensionHint: ext,
+                userID: userID,
+                contentType: mime
+            )
+            await artistStore.addGalleryImageURL(
+                uploaded.publicURL.absoluteString,
+                for: artistID
+            )
+            if let err = artistStore.lastError {
+                errorMessage = err
+                return
+            }
+            gallery = artistStore.cache[artistID]?.galleryURLs ?? gallery
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            #endif
+        } catch let error as RostrStorageError {
+            errorMessage = Self.humanise(error)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Detach a gallery image — removes the URL from epk_gallery. The
+    /// Storage object stays (cleanup is a future cron job).
+    private func removeGalleryImage(_ url: String) async {
+        guard let artistID = artistStore.myArtistID else { return }
+        await artistStore.removeGalleryImage(url, for: artistID)
+        if let err = artistStore.lastError {
+            errorMessage = err
+            return
+        }
+        gallery = artistStore.cache[artistID]?.galleryURLs ?? gallery
+    }
+
+    /// Handle a `.fileImporter` result for the rider PDF. Uploads the
+    /// file, then PATCHes artists.rider_url with the public URL.
+    private func handleRiderImport(_ result: Result<[URL], Error>) async {
+        errorMessage = nil
+        guard case .signedIn(let userID, _, _) = auth.state else {
+            errorMessage = "Sign in to upload a rider."
+            return
+        }
+        guard let artistID = artistStore.myArtistID else {
+            errorMessage = "Your artist profile isn't ready yet. Try again in a moment."
+            return
+        }
+
+        let url: URL
+        switch result {
+        case .failure(let error):
+            errorMessage = error.localizedDescription
+            return
+        case .success(let urls):
+            guard let first = urls.first else { return }
+            url = first
+        }
+
+        let needsScope = url.startAccessingSecurityScopedResource()
+        defer { if needsScope { url.stopAccessingSecurityScopedResource() } }
+
+        isUploadingRider = true
+        defer { isUploadingRider = false }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let uploaded = try await RostrStorage.upload(
+                data: data,
+                kind: .rider,
+                extensionHint: "pdf",
+                userID: userID,
+                contentType: "application/pdf"
+            )
+            await artistStore.updateRiderURL(
+                uploaded.publicURL.absoluteString,
+                for: artistID
+            )
+            if let err = artistStore.lastError {
+                errorMessage = err
+                return
+            }
+            riderURL = uploaded.publicURL
             #if canImport(UIKit)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             #endif
@@ -359,7 +491,7 @@ public struct ProfileEditView: View {
         .glassSurface(cornerRadius: R.Rad.card)
     }
 
-    // MARK: — Gallery card (still local-only until Wave 5.6)
+    // MARK: — Gallery card
 
     private var galleryCard: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
@@ -372,35 +504,60 @@ public struct ProfileEditView: View {
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: R.S.xs), count: 3), spacing: R.S.xs) {
                 ForEach(gallery, id: \.self) { item in
-                    Cover(seed: item, size: nil, cornerRadius: R.Rad.button2)
-                        .aspectRatio(1, contentMode: .fit)
-                        .overlay(alignment: .topTrailing) {
-                            Button {
-                                withAnimation(R.M.easeOutFast) { gallery.removeAll { $0 == item } }
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(R.C.fg1)
-                                    .frame(width: 20, height: 20)
-                                    .background { Circle().fill(Color.black.opacity(0.55)) }
-                            }
-                            .buttonStyle(.plain)
-                            .padding(5)
-                            .accessibilityLabel("Remove photo")
-                        }
+                    galleryThumbnail(for: item)
                 }
-                addTile
+                if gallery.count < 12 {
+                    addTile
+                }
             }
         }
         .padding(R.S.md)
         .glassSurface(cornerRadius: R.Rad.card)
+        .onChange(of: galleryPickerItem) { _, newItem in
+            Task { await handleGallerySelection(newItem) }
+        }
+    }
+
+    /// One thumbnail — async-loaded image + red-dot delete. Falls back
+    /// to the deterministic Cover gradient if the URL fails (object
+    /// deleted but gallery still references it, etc).
+    @ViewBuilder
+    private func galleryThumbnail(for urlString: String) -> some View {
+        let url = URL(string: urlString)
+        AsyncImage(url: url) { phase in
+            switch phase {
+            case .success(let image):
+                image.resizable().scaledToFill()
+            case .empty, .failure:
+                Cover(seed: urlString, size: nil, cornerRadius: R.Rad.button2)
+            @unknown default:
+                Cover(seed: urlString, size: nil, cornerRadius: R.Rad.button2)
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            Button {
+                Task { await removeGalleryImage(urlString) }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(R.C.fg1)
+                    .frame(width: 20, height: 20)
+                    .background { Circle().fill(Color.black.opacity(0.55)) }
+            }
+            .buttonStyle(.plain)
+            .padding(5)
+            .accessibilityLabel("Remove photo")
+        }
     }
 
     private var addTile: some View {
-        Button {
-            // Wave 5.6: real picker
-            gallery.append("NewPhoto-\(gallery.count)")
-        } label: {
+        PhotosPicker(
+            selection: $galleryPickerItem,
+            matching: .images,
+            photoLibrary: .shared()
+        ) {
             ZStack {
                 RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
                     .strokeBorder(
@@ -411,17 +568,21 @@ public struct ProfileEditView: View {
                         RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
                             .fill(R.C.glassLo)
                     }
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(R.C.fg2)
+                if isUploadingGallery {
+                    ProgressView().tint(R.C.fg1)
+                } else {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(R.C.fg2)
+                }
             }
             .aspectRatio(1, contentMode: .fit)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Add photo")
+        .disabled(isUploadingGallery)
+        .accessibilityLabel("Add gallery photo")
     }
 
-    // MARK: — Rider card (deferred to Wave 5.6 file uploads)
+    // MARK: — Rider card
 
     private var riderCard: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
@@ -437,10 +598,11 @@ public struct ProfileEditView: View {
                             .fill(R.C.glassLo)
                     }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("No rider attached")
+                    Text(riderURL == nil ? "No rider attached" : "Rider attached")
                         .font(R.F.body(13, weight: .semibold))
                         .foregroundStyle(R.C.fg1)
-                    Text("Upload a PDF — promoters see it on every booking request.")
+                    Text(riderURL?.lastPathComponent
+                         ?? "Upload a PDF — promoters see it on every booking request.")
                         .font(R.F.mono(8.5, weight: .medium))
                         .tracking(0.5)
                         .foregroundStyle(R.C.fg3)
@@ -448,19 +610,27 @@ public struct ProfileEditView: View {
                 }
                 Spacer()
                 Button {
-                    // Wave 5.6: Supabase Storage uploader.
+                    isRiderImporterPresented = true
                 } label: {
-                    Text("Attach")
-                        .font(R.F.mono(9.5, weight: .semibold))
-                        .tracking(0.6)
-                        .textCase(.uppercase)
-                        .foregroundStyle(R.C.fg1)
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 12)
-                        .background { Capsule().fill(R.C.glassLo) }
-                        .overlay { Capsule().strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline) }
+                    if isUploadingRider {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(R.C.fg1)
+                            .frame(width: 60, height: 24)
+                    } else {
+                        Text(riderURL == nil ? "Attach" : "Replace")
+                            .font(R.F.mono(9.5, weight: .semibold))
+                            .tracking(0.6)
+                            .textCase(.uppercase)
+                            .foregroundStyle(R.C.fg1)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 12)
+                            .background { Capsule().fill(R.C.glassLo) }
+                            .overlay { Capsule().strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline) }
+                    }
                 }
                 .buttonStyle(.plain)
+                .disabled(isUploadingRider)
             }
             .padding(R.S.xs)
             .background {
@@ -474,6 +644,13 @@ public struct ProfileEditView: View {
         }
         .padding(R.S.md)
         .glassSurface(cornerRadius: R.Rad.card)
+        .fileImporter(
+            isPresented: $isRiderImporterPresented,
+            allowedContentTypes: [.pdf],
+            allowsMultipleSelection: false
+        ) { result in
+            Task { await handleRiderImport(result) }
+        }
     }
 
     // MARK: — Socials card

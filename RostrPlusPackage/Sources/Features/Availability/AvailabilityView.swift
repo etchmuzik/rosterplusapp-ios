@@ -84,6 +84,7 @@ public struct AvailabilityView: View {
         if let fee = detail.baseFee, fee >= 5_000, fee <= 80_000 {
             baseFeeK = fee / 1000
         }
+        tourMode = detail.tourMode
     }
 
     private func save() async {
@@ -108,6 +109,14 @@ public struct AvailabilityView: View {
             return
         }
         await artistStore.updateBaseFee(baseFeeK * 1000, for: artistID)
+        if let err = artistStore.lastError {
+            errorMessage = err
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            #endif
+            return
+        }
+        await artistStore.updateTourMode(tourMode, for: artistID)
         if let err = artistStore.lastError {
             errorMessage = err
             #if canImport(UIKit)
@@ -253,7 +262,7 @@ public struct AvailabilityView: View {
         .glassSurface(cornerRadius: R.Rad.card)
     }
 
-    // MARK: — Tour mode card (local-only — no server column yet)
+    // MARK: — Tour mode card
 
     private var tourCard: some View {
         HStack(alignment: .center, spacing: R.S.md) {
