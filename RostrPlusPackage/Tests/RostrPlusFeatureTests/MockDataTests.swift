@@ -38,7 +38,7 @@ struct MockDataTests {
     func threadAlternates() {
         let messages = MockData.threadMessages
         #expect(messages.count >= 4, "Preview needs enough messages to show both sides")
-        #expect(messages.contains(where: \.isMine))
+        #expect(messages.contains(where: { $0.isMine }))
         #expect(messages.contains(where: { !$0.isMine }))
     }
 

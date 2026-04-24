@@ -93,7 +93,7 @@ public struct OnboardView: View {
         Slide(
             eyebrow: "Tonight, not someday",
             headline: "Book the GCC's\nloudest nights.",
-            body: "Thousands of artists across Dubai, Riyadh, Abu Dhabi, Doha, and Jeddah — one roster.",
+            copy: "Thousands of artists across Dubai, Riyadh, Abu Dhabi, Doha, and Jeddah — one roster.",
             illustration: {
                 GradientPanel(seed: "slide1", tall: true)
             }
@@ -104,7 +104,7 @@ public struct OnboardView: View {
         Slide(
             eyebrow: "Contracts + payments, built-in",
             headline: "No more\nWhatsApp math.",
-            body: "E-sign, invoice, pay. Your whole season lives in one place — with audit logs promoters and artists can trust.",
+            copy: "E-sign, invoice, pay. Your whole season lives in one place — with audit logs promoters and artists can trust.",
             illustration: {
                 GradientPanel(seed: "slide2", tall: false)
             }
@@ -246,7 +246,7 @@ public struct OnboardView: View {
 private struct Slide<Illustration: View>: View {
     let eyebrow: String
     let headline: String
-    let body: String
+    let copy: String
     @ViewBuilder let illustration: () -> Illustration
 
     var body: some View {
@@ -262,7 +262,7 @@ private struct Slide<Illustration: View>: View {
                     .font(R.F.display(34, weight: .bold))
                     .tracking(-1.0)
                     .foregroundStyle(R.C.fg1)
-                Text(body)
+                Text(copy)
                     .font(R.F.body(14, weight: .regular))
                     .foregroundStyle(R.C.fg2)
                     .lineSpacing(3)

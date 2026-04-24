@@ -51,7 +51,9 @@ public struct Cover: View {
                             ],
                             center: UnitPoint(x: 0.3, y: 0.2),
                             startRadius: 0,
-                            endRadius: size * 0.6
+                            // Fallback radius when size is nil (caller-driven frame).
+                            // 120 matches the largest common cover size on EPK.
+                            endRadius: (size ?? 120) * 0.6
                         )
                     )
                     .allowsHitTesting(false)

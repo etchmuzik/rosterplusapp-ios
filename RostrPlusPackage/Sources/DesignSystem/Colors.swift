@@ -77,7 +77,7 @@ public enum R {
 // expressed in hex. This init does the 0xRRGGBB conversion inline so
 // the palette file reads top-to-bottom like the JSX it came from.
 
-extension Color {
+public extension Color {
     init(hex: UInt32, opacity: Double = 1.0) {
         let r = Double((hex >> 16) & 0xFF) / 255.0
         let g = Double((hex >>  8) & 0xFF) / 255.0

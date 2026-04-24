@@ -14,7 +14,7 @@
 import SwiftUI
 
 public struct TabIcon: Shape {
-    public enum Kind {
+    public enum Kind: Sendable {
         case home, roster, bookings, inbox, me
     }
 

@@ -40,6 +40,7 @@ let package = Package(
         // tests without pulling in the rest of the feature surface.
         .target(
             name: "DesignSystem",
+            path: "Sources/DesignSystem",
             resources: [
                 .process("Fonts")
             ]
@@ -47,13 +48,18 @@ let package = Package(
 
         // ─── RostrPlusFeature ─────────────────────────────────────
         // The big one — all 23 screens + navigation + stores + the
-        // Supabase client wrapper.
+        // Supabase client wrapper. Sources are spread across several
+        // sibling folders (AppCore, Features, Stores, SupabaseClient,
+        // Components) — rolled into one module via a shared `Sources`
+        // path with DesignSystem excluded (it's its own target).
         .target(
             name: "RostrPlusFeature",
             dependencies: [
                 "DesignSystem",
                 .product(name: "Supabase", package: "supabase-swift")
-            ]
+            ],
+            path: "Sources",
+            exclude: ["DesignSystem"]
         ),
 
         // ─── Tests ────────────────────────────────────────────────

@@ -106,7 +106,7 @@ public struct ClaimView: View {
                 index: 1,
                 glyph: "envelope",
                 title: "Verify email",
-                body: "We'll send a 6-digit code to hesham@beyondmngmt.ae.",
+                copy: "We'll send a 6-digit code to hesham@beyondmngmt.ae.",
                 isDone: emailVerified,
                 ctaLabel: "Verified",
                 action: {
@@ -117,7 +117,7 @@ public struct ClaimView: View {
                 index: 2,
                 glyph: "link",
                 title: "Link a social profile",
-                body: "Pick one: Instagram, SoundCloud, or Spotify. Promoters see these on your EPK.",
+                copy: "Pick one: Instagram, SoundCloud, or Spotify. Promoters see these on your EPK.",
                 isDone: socialLinked,
                 ctaLabel: "Link",
                 action: {
@@ -131,7 +131,7 @@ public struct ClaimView: View {
                 index: 3,
                 glyph: "creditcard",
                 title: "Add a payout method",
-                body: "IBAN or card. Payments land directly after each event.",
+                copy: "IBAN or card. Payments land directly after each event.",
                 isDone: payoutAdded,
                 ctaLabel: "Add",
                 action: {
@@ -172,7 +172,7 @@ private struct StepCard: View {
     let index: Int
     let glyph: String
     let title: String
-    let body: String
+    let copy: String
     let isDone: Bool
     let ctaLabel: String
     let action: () -> Void
@@ -200,7 +200,7 @@ private struct StepCard: View {
                 Text(title)
                     .font(R.F.body(14, weight: .semibold))
                     .foregroundStyle(R.C.fg1)
-                Text(body)
+                Text(copy)
                     .font(R.F.body(12, weight: .regular))
                     .foregroundStyle(R.C.fg3)
                     .lineSpacing(2)

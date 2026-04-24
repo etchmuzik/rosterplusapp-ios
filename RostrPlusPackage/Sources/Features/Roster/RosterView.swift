@@ -19,14 +19,14 @@ public struct RosterView: View {
     }
 
     public var body: some View {
-        @Bindable var store = store
+        let bindable = Bindable(store)
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
-                searchField(store: $store)
+                searchField(store: bindable)
                     .padding(.horizontal, R.S.lg)
                     .padding(.top, R.S.md)
-                filterChips(store: $store)
+                filterChips(store: bindable)
                     .padding(.top, R.S.md)
                 content
                     .padding(.horizontal, R.S.lg)
@@ -67,7 +67,7 @@ public struct RosterView: View {
 
     // MARK: — Search
 
-    private func searchField(store: Binding<RosterStore>) -> some View {
+    private func searchField(store: Bindable<RosterStore>) -> some View {
         HStack(spacing: R.S.sm) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 13, weight: .medium))
@@ -89,7 +89,7 @@ public struct RosterView: View {
 
     // MARK: — Filter chips
 
-    private func filterChips(store: Binding<RosterStore>) -> some View {
+    private func filterChips(store: Bindable<RosterStore>) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: R.S.xs) {
                 ForEach(store.wrappedValue.genres, id: \.self) { g in
