@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 import Supabase
+import Realtime
 
 /// Display shape for a notification row. Maps server-side `type` onto
 /// a small enum the view switches on for icon + tint.
@@ -41,6 +42,11 @@ public final class NotificationsStore {
     private let client = RostrSupabase.shared
     private var inFlight: Task<Void, Never>?
 
+    // Realtime — one channel subscribed to new notifications scoped
+    // to the signed-in user. Rebinds on user switch.
+    private var channel: RealtimeChannelV2?
+    private var subscription: RealtimeSubscription?
+
     public init() {}
 
     // MARK: — Fetch
@@ -62,11 +68,58 @@ public final class NotificationsStore {
                     .value
                 self.items = rows.map(Self.rowFromDTO)
                 self.state = .loaded
+                await self.subscribeRealtime(for: userID)
             } catch {
                 self.state = .failed(error.localizedDescription)
             }
             self.inFlight = nil
         }
+    }
+
+    // MARK: — Realtime
+
+    /// Listen for INSERTs scoped to this user and prepend new rows.
+    /// Dedupes on id so a race with the initial fetch is harmless.
+    private func subscribeRealtime(for userID: UUID) async {
+        await teardownRealtime()
+        let ch = client.realtimeV2.channel("notifications:\(userID.uuidString)")
+        let sub = ch.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "notifications",
+            filter: "user_id=eq.\(userID.uuidString)"
+        ) { [weak self] action in
+            Task { @MainActor [weak self] in
+                self?.handleInsert(action)
+            }
+        }
+        await ch.subscribe()
+        self.channel = ch
+        self.subscription = sub
+    }
+
+    private func handleInsert(_ action: InsertAction) {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        do {
+            let dto = try action.decodeRecord(as: NotificationDTO.self, decoder: decoder)
+            let row = Self.rowFromDTO(dto)
+            guard !items.contains(where: { $0.id == row.id }) else { return }
+            items.insert(row, at: 0)
+        } catch {
+            #if DEBUG
+            print("NotificationsStore.handleInsert decode failed:", error)
+            #endif
+        }
+    }
+
+    private func teardownRealtime() async {
+        subscription?.cancel()
+        subscription = nil
+        if let ch = channel {
+            await ch.unsubscribe()
+        }
+        channel = nil
     }
 
     // MARK: — Derived

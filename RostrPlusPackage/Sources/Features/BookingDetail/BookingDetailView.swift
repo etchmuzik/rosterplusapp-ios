@@ -11,10 +11,10 @@
 //                   View invoice (filled, appears only when status
 //                   is completed)
 //
-// Track 2 pass 2: reads from BookingsStore.detailCache (warmed by the
-// list fetch) with a fallback fetch via fetchDetail(id:). Timeline is
-// still derived from MockData — live events come later, in Wave 5.1
-// when the `booking_events` table lands.
+// Wave 5.3: timeline reads live from public.booking_events via
+// TimelineStore. The store subscribes to a realtime channel filtered
+// to this booking_id, so contract signatures + payment confirmations
+// appear the moment the trigger writes them — no refresh needed.
 
 import SwiftUI
 import DesignSystem
@@ -22,6 +22,7 @@ import DesignSystem
 public struct BookingDetailView: View {
     @Bindable var nav: NavigationModel
     @Environment(BookingsStore.self) private var bookings
+    @Environment(TimelineStore.self) private var timelineStore
     let bookingID: String
 
     public init(nav: NavigationModel, bookingID: String) {
@@ -61,7 +62,13 @@ public struct BookingDetailView: View {
         .task {
             if let id = resolvedUUID {
                 bookings.fetchDetail(id: id)
+                timelineStore.fetch(for: id)
             }
+        }
+        .onDisappear {
+            // Release the realtime channel when the user backs out —
+            // only one booking timeline is live at a time.
+            Task { await timelineStore.unsubscribe() }
         }
     }
 
@@ -117,19 +124,30 @@ public struct BookingDetailView: View {
         }
     }
 
-    // MARK: — Timeline (still mock — live events pending)
+    // MARK: — Timeline (live via public.booking_events + realtime)
 
     private var timeline: some View {
-        VStack(alignment: .leading, spacing: R.S.md) {
+        let events = resolvedUUID.map { timelineStore.events(for: $0) } ?? []
+        let activeID = resolvedUUID.flatMap { timelineStore.activeEventID(for: $0) }
+        return VStack(alignment: .leading, spacing: R.S.md) {
             Text("Timeline")
                 .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(MockData.bookingTimeline.enumerated()), id: \.element.id) { index, event in
-                    TimelineRow(
-                        event: event,
-                        isFirst: index == 0,
-                        isLast: index == MockData.bookingTimeline.count - 1
-                    )
+                if events.isEmpty {
+                    Text("No events yet.")
+                        .font(R.F.body(12, weight: .regular))
+                        .foregroundStyle(R.C.fg3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, R.S.xs)
+                } else {
+                    ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
+                        TimelineRow(
+                            event: event,
+                            isActive: event.id == activeID,
+                            isFirst: index == 0,
+                            isLast: index == events.count - 1
+                        )
+                    }
                 }
             }
             .padding(R.S.md)
@@ -233,25 +251,24 @@ private struct FactCell: View {
 // MARK: - Timeline row
 
 private struct TimelineRow: View {
-    let event: MockTimelineEvent
+    let event: TimelineEvent
+    let isActive: Bool
     let isFirst: Bool
     let isLast: Bool
 
     var body: some View {
         HStack(alignment: .top, spacing: R.S.md) {
             VStack(spacing: 0) {
-                // Top connector
                 Rectangle()
                     .fill(isFirst ? Color.clear : R.C.borderMid)
                     .frame(width: 1, height: 8)
                 Circle()
-                    .fill(event.isActive ? R.C.fg1 : R.C.glassMid)
+                    .fill(isActive ? R.C.fg1 : R.C.glassMid)
                     .frame(width: 9, height: 9)
                     .overlay {
                         Circle()
-                            .strokeBorder(event.isActive ? R.C.fg1 : R.C.borderMid, lineWidth: 1)
+                            .strokeBorder(isActive ? R.C.fg1 : R.C.borderMid, lineWidth: 1)
                     }
-                // Bottom connector
                 Rectangle()
                     .fill(isLast ? Color.clear : R.C.borderMid)
                     .frame(width: 1)
@@ -261,14 +278,20 @@ private struct TimelineRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(event.label)
-                    .font(R.F.body(13, weight: event.isActive ? .semibold : .regular))
-                    .foregroundStyle(event.isActive ? R.C.fg1 : R.C.fg2)
-                Text(event.when)
+                    .font(R.F.body(13, weight: isActive ? .semibold : .regular))
+                    .foregroundStyle(isActive ? R.C.fg1 : R.C.fg2)
+                Text(Self.whenFormatter.string(from: event.createdAt))
                     .monoLabel(size: 9, tracking: 0.5, color: R.C.fg3)
             }
             .padding(.bottom, isLast ? 0 : R.S.md)
         }
     }
+
+    private static let whenFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM · HH:mm"
+        return f
+    }()
 }
 
 #if DEBUG
@@ -292,8 +315,21 @@ private struct TimelineRow: View {
         ],
         past: []
     )
+    let timeline = TimelineStore()
+    timeline._testLoad([
+        TimelineEvent(id: UUID(), kind: .requestSent,
+                      label: "Booking request sent",
+                      createdAt: Date().addingTimeInterval(-7 * 86_400)),
+        TimelineEvent(id: UUID(), kind: .artistAccepted,
+                      label: "Artist accepted",
+                      createdAt: Date().addingTimeInterval(-6 * 86_400)),
+        TimelineEvent(id: UUID(), kind: .contractCountersigned,
+                      label: "Contract countersigned",
+                      createdAt: Date().addingTimeInterval(-2 * 86_400))
+    ], for: id)
     return BookingDetailView(nav: nav, bookingID: id.uuidString)
         .environment(bookings)
+        .environment(timeline)
         .preferredColorScheme(.dark)
 }
 #endif

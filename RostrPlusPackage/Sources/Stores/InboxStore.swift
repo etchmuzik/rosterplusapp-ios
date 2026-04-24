@@ -12,6 +12,7 @@
 import Foundation
 import Observation
 import Supabase
+import Realtime
 
 /// Display shape for the inbox list (one row per conversation).
 public struct InboxThread: Identifiable, Hashable, Sendable {
@@ -59,6 +60,12 @@ public final class InboxStore {
     private var inFlight: Task<Void, Never>?
     private var currentUserID: UUID?
 
+    // Realtime — one channel subscribed to messages where receiver_id
+    // matches the signed-in user. Rebinds whenever `refresh(for:)`
+    // switches users (sign-out + sign-in as someone else).
+    private var channel: RealtimeChannelV2?
+    private var subscription: RealtimeSubscription?
+
     public init() {}
 
     // MARK: — Fetch
@@ -102,11 +109,84 @@ public final class InboxStore {
                     )
                 }
                 self.state = .loaded
+                await self.subscribeRealtime(for: userID)
             } catch {
                 self.state = .failed(error.localizedDescription)
             }
             self.inFlight = nil
         }
+    }
+
+    // MARK: — Realtime
+
+    /// Subscribe to INSERTs on public.messages where I'm the receiver.
+    /// New messages prepend so threads reorder instantly and the unread
+    /// badge bumps without a refresh.
+    private func subscribeRealtime(for userID: UUID) async {
+        // Tear any prior channel down so we don't leak sockets.
+        await teardownRealtime()
+
+        let ch = client.realtimeV2.channel("messages:in:\(userID.uuidString)")
+        let sub = ch.onPostgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "messages",
+            filter: "receiver_id=eq.\(userID.uuidString)"
+        ) { [weak self] action in
+            Task { @MainActor [weak self] in
+                self?.handleInboundInsert(action)
+            }
+        }
+        await ch.subscribe()
+        self.channel = ch
+        self.subscription = sub
+    }
+
+    /// Decode + prepend. Dedupes against optimistic rows that the
+    /// sender's send() already inserted locally.
+    private func handleInboundInsert(_ action: InsertAction) {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        do {
+            let msg = try action.decodeRecord(as: MessageDTO.self, decoder: decoder)
+            guard !messages.contains(where: { $0.id == msg.id }) else { return }
+            messages.insert(msg, at: 0)
+
+            // Best-effort name lookup if we've never seen this sender.
+            if let sender = msg.senderID, profileNames[sender] == nil {
+                Task { [weak self] in
+                    guard let self else { return }
+                    struct ProfileRow: Decodable { let id: UUID; let display_name: String? }
+                    do {
+                        let rows: [ProfileRow] = try await client
+                            .from("profiles")
+                            .select("id,display_name")
+                            .eq("id", value: sender)
+                            .limit(1)
+                            .execute()
+                            .value
+                        if let name = rows.first?.display_name {
+                            self.profileNames[sender] = name
+                        }
+                    } catch {
+                        // Ignored — name stays as "Member" fallback.
+                    }
+                }
+            }
+        } catch {
+            #if DEBUG
+            print("InboxStore.handleInboundInsert decode failed:", error)
+            #endif
+        }
+    }
+
+    private func teardownRealtime() async {
+        subscription?.cancel()
+        subscription = nil
+        if let ch = channel {
+            await ch.unsubscribe()
+        }
+        channel = nil
     }
 
     // MARK: — Derived
