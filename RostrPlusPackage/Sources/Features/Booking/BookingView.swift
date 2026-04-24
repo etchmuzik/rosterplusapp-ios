@@ -25,6 +25,7 @@ public struct BookingView: View {
     @Environment(ArtistDetailStore.self) private var artistDetail
     @Environment(AuthStore.self) private var auth
     @Environment(BookingsStore.self) private var bookings
+    @Environment(AvailabilityCheckStore.self) private var availabilityCheck
     let artistID: String
 
     @State private var step: Int = 1
@@ -39,7 +40,6 @@ public struct BookingView: View {
     // Step 2
     @State private var fee: String = ""
     @State private var currency: String = "AED"
-    @State private var hasConflict: Bool = false  // toggle in previews to see banner
 
     public init(nav: NavigationModel, artistID: String) {
         self.nav = nav
@@ -47,6 +47,25 @@ public struct BookingView: View {
     }
 
     private var resolvedArtistID: UUID? { UUID(uuidString: artistID) }
+
+    /// True when the check_availability RPC says the artist can't take
+    /// this date. Fail-open — absence of a result means "no conflict".
+    private var hasConflict: Bool {
+        guard let id = resolvedArtistID,
+              let result = availabilityCheck.result(for: id, date: eventDate)
+        else { return false }
+        return !result.available
+    }
+
+    /// Copy surfaced on the banner — falls back to generic text when
+    /// the RPC didn't supply a reason.
+    private var conflictReason: String {
+        guard let id = resolvedArtistID,
+              let result = availabilityCheck.result(for: id, date: eventDate),
+              !result.available
+        else { return "Artist unavailable on this date" }
+        return result.reason ?? "Artist unavailable on this date"
+    }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -71,11 +90,15 @@ public struct BookingView: View {
             // placeholder.
             if let id = resolvedArtistID {
                 artistDetail.fetch(id: id)
-                // Seed the currency from the artist's base currency.
                 if let ccy = artistDetail.cache[id]?.currency {
                     currency = ccy
                 }
+                availabilityCheck.check(artistID: id, on: eventDate)
             }
+        }
+        .onChange(of: eventDate) { _, newDate in
+            guard let id = resolvedArtistID else { return }
+            availabilityCheck.check(artistID: id, on: newDate)
         }
     }
 
@@ -131,7 +154,7 @@ public struct BookingView: View {
         VStack(alignment: .leading, spacing: R.S.md) {
             SectionLabel("Step 2 of 3 · Fee")
             if hasConflict {
-                ConflictBanner()
+                ConflictBanner(reason: conflictReason)
             }
             FieldLabel("Amount")
             HStack(spacing: R.S.sm) {
@@ -359,6 +382,8 @@ private struct ReviewRow: View {
 // MARK: - Conflict banner
 
 private struct ConflictBanner: View {
+    let reason: String
+
     var body: some View {
         HStack(alignment: .top, spacing: R.S.sm) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -368,7 +393,7 @@ private struct ConflictBanner: View {
                 Text("Potential conflict")
                     .font(R.F.body(13, weight: .semibold))
                     .foregroundStyle(R.C.fg1)
-                Text("Artist has an existing booking on this date. You can still send — they'll decline if it clashes.")
+                Text("\(reason). You can still send — they'll decline if it clashes.")
                     .font(R.F.body(12, weight: .regular))
                     .foregroundStyle(R.C.fg2)
             }
@@ -421,10 +446,12 @@ private struct GlassFieldStyle: TextFieldStyle {
             pressQuotes: [], pastPerformances: [], social: nil
         )
     )
+    let availabilityCheck = AvailabilityCheckStore()
     return BookingView(nav: nav, artistID: id.uuidString)
         .environment(auth)
         .environment(bookings)
         .environment(artistDetail)
+        .environment(availabilityCheck)
         .preferredColorScheme(.dark)
 }
 #endif

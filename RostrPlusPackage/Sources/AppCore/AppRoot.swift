@@ -22,6 +22,7 @@ public struct AppRoot: View {
     @State private var artistDetail = ArtistDetailStore()
     @State private var timeline = TimelineStore()
     @State private var profile = ProfileStore()
+    @State private var availabilityCheck = AvailabilityCheckStore()
     // AnalyticsStore derives from BookingsStore; constructed lazily so
     // it captures the same instance we inject below.
     @State private var analytics: AnalyticsStore? = nil
@@ -74,6 +75,7 @@ public struct AppRoot: View {
         .environment(artistDetail)
         .environment(timeline)
         .environment(profile)
+        .environment(availabilityCheck)
         .environment(analytics ?? AnalyticsStore(bookings: bookings))
         .background(R.C.bg0.ignoresSafeArea())
         .preferredColorScheme(.dark)
