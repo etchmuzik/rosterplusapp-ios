@@ -1,0 +1,33 @@
+# Xcode + SwiftPM
+.build/
+.swiftpm/
+DerivedData/
+build/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+Package.resolved
+
+# macOS
+.DS_Store
+
+# Local IDE
+.idea/
+.vscode/
+
+# Fonts — bundled at build time, never committed (licensed per-machine via Fontshare download)
+# Drop Chillax/Satoshi/JetBrainsMono files into Sources/DesignSystem/Fonts/ locally; the README there
+# lists the exact filenames.
+RostrPlusPackage/Sources/DesignSystem/Fonts/*.otf
+RostrPlusPackage/Sources/DesignSystem/Fonts/*.ttf
+RostrPlusPackage/Sources/DesignSystem/Fonts/*.woff2
+
+# Secrets — no room for .env files in a native iOS app, but belt + braces
+.env
+.env.*
+!.env.example
+
+# Claude / local tool scratch
+.claude/
+.mcp.json

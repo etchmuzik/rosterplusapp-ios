@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- ROSTR+ iOS entitlements.
+
+       AI agents: edit this file to toggle capabilities.
+       Each <key>/<value> pair maps to one capability.
+
+       Currently enabled:
+         - Sign in with Apple (screens 01 Onboard + 20 SignIn)
+         - Push notifications (registered at sign-in; server-side sends
+           deferred to v1.1 per plan)
+         - Keychain sharing (token persistence across app launches)
+  -->
+
+  <key>com.apple.developer.applesignin</key>
+  <array>
+    <string>Default</string>
+  </array>
+
+  <key>aps-environment</key>
+  <string>development</string>
+
+  <key>keychain-access-groups</key>
+  <array>
+    <string>$(AppIdentifierPrefix)io.rosterplus.app</string>
+  </array>
+</dict>
+</plist>

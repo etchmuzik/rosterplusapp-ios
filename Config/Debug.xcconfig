@@ -1,0 +1,10 @@
+#include "Shared.xcconfig"
+
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+SWIFT_COMPILATION_MODE = singlefile
+ONLY_ACTIVE_ARCH = YES
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG
+
+// Supabase runs against the live project in Debug too — no separate
+// staging tier. RLS gates what the iOS client can do; nothing should
+// break prod with a dev session.
