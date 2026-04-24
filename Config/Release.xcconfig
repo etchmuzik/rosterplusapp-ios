@@ -3,3 +3,7 @@
 SWIFT_OPTIMIZATION_LEVEL = -O
 SWIFT_COMPILATION_MODE = wholemodule
 ONLY_ACTIVE_ARCH = NO
+
+// Release builds hit APNs production (TestFlight + App Store).
+// Paired with aps-environment = $(APS_ENVIRONMENT) in the entitlement.
+APS_ENVIRONMENT = production
