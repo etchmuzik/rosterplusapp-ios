@@ -1,15 +1,12 @@
 // ThreadView.swift — Screen 07
 //
 // Real-time chat view. Port of `ThreadScreen` at ios-app.jsx line 1028.
-// Layout:
+// Wave 5.1: reads + writes through InboxStore (server: public.messages).
 //
-//   NavHeader("DJ NOVAK") with avatar chip
-//   ScrollView of message bubbles (mine right-aligned, theirs left)
-//   Composer: text field + send button (glass bar, sticks to bottom)
-//
-// Realtime on public.messages lands with the real Supabase wire in a
-// later pass. For now, mock messages render statically and the
-// composer clears itself on send (locally appended).
+// Realtime subscriptions land in Wave 5.2 — for now the composer does
+// an optimistic append via store.send() and the user can pull-to-refresh
+// via the Inbox tab. Every in-app message is addressed (sender_id,
+// receiver_id, booking_id); the thread id carries all three.
 
 import SwiftUI
 import DesignSystem
@@ -19,9 +16,9 @@ import UIKit
 
 public struct ThreadView: View {
     @Bindable var nav: NavigationModel
+    @Environment(InboxStore.self) private var store
     let threadID: String
 
-    @State private var messages: [MockMessage] = MockData.threadMessages
     @State private var draft: String = ""
 
     public init(nav: NavigationModel, threadID: String) {
@@ -29,19 +26,36 @@ public struct ThreadView: View {
         self.threadID = threadID
     }
 
+    private var messages: [ThreadMessage] {
+        store.messages(for: threadID)
+    }
+
+    private var thread: InboxThread? {
+        store.threads.first { $0.id == threadID }
+    }
+
+    private var headerName: String {
+        thread?.counterpartyName ?? store.counterpartyName(for: threadID)
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             headerBar
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: R.S.sm) {
-                        ForEach(messages) { m in
-                            Bubble(message: m).id(m.id)
+                    if messages.isEmpty {
+                        emptyState
+                            .padding(.top, R.S.xxl)
+                    } else {
+                        VStack(alignment: .leading, spacing: R.S.sm) {
+                            ForEach(messages) { m in
+                                Bubble(message: m).id(m.id)
+                            }
                         }
+                        .padding(.horizontal, R.S.lg)
+                        .padding(.top, R.S.md)
+                        .padding(.bottom, R.S.md)
                     }
-                    .padding(.horizontal, R.S.lg)
-                    .padding(.top, R.S.md)
-                    .padding(.bottom, R.S.md)
                 }
                 .onChange(of: messages.count) { _, _ in
                     withAnimation(R.M.easeOut) {
@@ -76,9 +90,9 @@ public struct ThreadView: View {
             }
             .buttonStyle(.plain)
 
-            Cover(seed: "DJ NOVAK", size: 36, cornerRadius: R.Rad.md)
+            Cover(seed: headerName, size: 36, cornerRadius: R.Rad.md)
             VStack(alignment: .leading, spacing: 1) {
-                Text("DJ NOVAK")
+                Text(headerName)
                     .font(R.F.body(14, weight: .semibold))
                     .foregroundStyle(R.C.fg1)
                 HStack(spacing: 4) {
@@ -140,23 +154,34 @@ public struct ThreadView: View {
         }
     }
 
+    private var emptyState: some View {
+        VStack(spacing: R.S.xs) {
+            Text("Start the conversation")
+                .font(R.F.body(14, weight: .semibold))
+                .foregroundStyle(R.C.fg1)
+            Text("Your first message sends in a thread about this booking.")
+                .font(R.F.body(12, weight: .regular))
+                .foregroundStyle(R.C.fg3)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, R.S.lg)
+    }
+
     private var canSend: Bool {
-        !draft.trimmingCharacters(in: .whitespaces).isEmpty
+        !draft.trimmingCharacters(in: .whitespaces).isEmpty && thread != nil
     }
 
     private func send() {
-        guard canSend else { return }
+        guard canSend, let t = thread else { return }
         #if canImport(UIKit)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         #endif
-        let time = Date().formatted(date: .omitted, time: .shortened)
-        messages.append(.init(
-            id: "local-\(UUID().uuidString.prefix(6))",
-            from: "me",
-            body: draft.trimmingCharacters(in: .whitespaces),
-            time: time,
-            isMine: true
-        ))
+        store.send(
+            content: draft,
+            to: t.counterpartyID,
+            bookingID: t.bookingID
+        )
         draft = ""
     }
 }
@@ -164,13 +189,13 @@ public struct ThreadView: View {
 // MARK: - Bubble
 
 private struct Bubble: View {
-    let message: MockMessage
+    let message: ThreadMessage
 
     var body: some View {
         HStack {
             if message.isMine { Spacer(minLength: R.S.xxl) }
             VStack(alignment: message.isMine ? .trailing : .leading, spacing: 3) {
-                Text(message.body)
+                Text(message.content)
                     .font(R.F.body(14, weight: .regular))
                     .foregroundStyle(message.isMine ? R.C.bg0 : R.C.fg1)
                     .padding(.horizontal, R.S.md)
@@ -185,7 +210,7 @@ private struct Bubble: View {
                                 .strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline)
                         }
                     }
-                Text(message.time)
+                Text(Self.timeFormatter.string(from: message.sentAt))
                     .monoLabel(size: 8, tracking: 0.4, color: R.C.fg3)
                     .padding(.horizontal, 4)
             }
@@ -193,12 +218,35 @@ private struct Bubble: View {
             if !message.isMine { Spacer(minLength: R.S.xxl) }
         }
     }
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
 }
 
 #if DEBUG
 #Preview("ThreadView") {
     let nav = NavigationModel()
-    return ThreadView(nav: nav, threadID: "dj-novak")
+    let store = InboxStore()
+    let me = UUID()
+    let other = UUID()
+    let bookingID = UUID()
+    store._testLoad(
+        userID: me,
+        messages: [
+            MessageDTO(id: UUID(), senderID: other, receiverID: me, bookingID: bookingID,
+                       content: "Good morning — quick one on soundcheck.", read: true,
+                       createdAt: Date().addingTimeInterval(-7200)),
+            MessageDTO(id: UUID(), senderID: me, receiverID: other, bookingID: bookingID,
+                       content: "Shoot.", read: true,
+                       createdAt: Date().addingTimeInterval(-7000))
+        ],
+        names: [other: "DJ NOVAK"]
+    )
+    return ThreadView(nav: nav, threadID: bookingID.uuidString)
+        .environment(store)
         .preferredColorScheme(.dark)
 }
 #endif

@@ -1,11 +1,11 @@
 // NotificationsView.swift — Screen 16
 //
 // Grouped activity feed. Port of `NotificationsScreen` at ios-app.jsx
-// line 1443. Seven notification types, each with its own SF Symbol
-// glyph + subtle tinted chip. Unread rows get a gold dot indicator.
+// line 1443. Wave 5.1: backed by NotificationsStore (public.notifications).
 //
 // Tap routes to the relevant destination (booking detail, thread,
-// invoice, etc.) per README §Interactions & behavior.
+// invoice, etc.) using the foreign-key columns (booking_id/contract_id/
+// payment_id) on each row. Marking read flips the DB column in place.
 
 import SwiftUI
 import DesignSystem
@@ -15,6 +15,7 @@ import UIKit
 
 public struct NotificationsView: View {
     @Bindable var nav: NavigationModel
+    @Environment(NotificationsStore.self) private var store
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -27,6 +28,7 @@ public struct NotificationsView: View {
                     #if canImport(UIKit)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     #endif
+                    for n in store.unread { store.markRead(n.id) }
                 } label: {
                     Text("Mark read")
                         .monoLabel(size: 9.5, tracking: 0.6, color: R.C.fg2)
@@ -40,8 +42,15 @@ public struct NotificationsView: View {
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: R.S.md) {
-                    unreadSection
-                    earlierSection
+                    switch store.state {
+                    case .idle, .loading:
+                        loadingSkeleton
+                    case .failed(let message):
+                        failureCard(message)
+                    case .loaded:
+                        unreadSection
+                        earlierSection
+                    }
                     Color.clear.frame(height: R.S.xxl)
                 }
                 .padding(.horizontal, R.S.lg)
@@ -53,18 +62,18 @@ public struct NotificationsView: View {
 
     // MARK: — Sections
 
+    @ViewBuilder
     private var unreadSection: some View {
-        let items = MockData.notifications.filter(\.unread)
-        return sectionIfAny(title: "Unread", items: items)
-    }
-
-    private var earlierSection: some View {
-        let items = MockData.notifications.filter { !$0.unread }
-        return sectionIfAny(title: "Earlier", items: items)
+        sectionIfAny(title: "Unread", items: store.unread)
     }
 
     @ViewBuilder
-    private func sectionIfAny(title: String, items: [MockNotification]) -> some View {
+    private var earlierSection: some View {
+        sectionIfAny(title: "Earlier", items: store.read)
+    }
+
+    @ViewBuilder
+    private func sectionIfAny(title: String, items: [NotificationRow]) -> some View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: R.S.xs) {
                 Text(title)
@@ -72,7 +81,8 @@ public struct NotificationsView: View {
                     .padding(.top, R.S.xs)
                 VStack(spacing: R.S.xs) {
                     ForEach(items) { n in
-                        NotificationRow(notification: n) {
+                        NotificationCell(notification: n) {
+                            if !n.read { store.markRead(n.id) }
                             route(for: n)
                         }
                     }
@@ -81,29 +91,89 @@ public struct NotificationsView: View {
         }
     }
 
-    private func route(for n: MockNotification) {
+    // MARK: — Loading / failure
+
+    private var loadingSkeleton: some View {
+        VStack(spacing: R.S.xs) {
+            ForEach(0..<5, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                    .fill(R.C.glassLo)
+                    .frame(height: 68)
+            }
+        }
+        .redacted(reason: .placeholder)
+    }
+
+    private func failureCard(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: R.S.sm) {
+            Text("Couldn't load notifications")
+                .font(R.F.body(13, weight: .semibold))
+                .foregroundStyle(R.C.fg1)
+            Text(message)
+                .font(R.F.body(12, weight: .regular))
+                .foregroundStyle(R.C.fg2)
+        }
+        .padding(R.S.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .fill(R.C.red.opacity(0.08))
+        }
+    }
+
+    // MARK: — Routing
+
+    private func route(for n: NotificationRow) {
         switch n.kind {
         case .booking, .calendar:
-            nav.push(.bookingDetail(bookingID: n.id))
+            // Prefer the href if the server set one; else do nothing.
+            if let href = n.href, let target = destination(from: href) {
+                nav.push(target)
+            }
         case .message:
-            nav.push(.thread(threadID: n.id))
+            if let href = n.href, let target = destination(from: href) {
+                nav.push(target)
+            }
         case .contract:
-            nav.push(.contract(contractID: n.id))
+            if let href = n.href, let target = destination(from: href) {
+                nav.push(target)
+            }
         case .payment:
-            nav.push(.invoice(bookingID: n.id))
+            if let href = n.href, let target = destination(from: href) {
+                nav.push(target)
+            }
         case .review:
-            nav.push(.review(bookingID: n.id))
-        case .profile:
-            // Viewing your public profile = pushing the EPK as yourself.
-            nav.push(.epk(artistID: "me"))
+            if let href = n.href, let target = destination(from: href) {
+                nav.push(target)
+            }
+        case .profile, .other:
+            // Passive — profile notifications are informational only.
+            break
+        }
+    }
+
+    /// Parse the href the edge function wrote into the notification.
+    /// Shape on the server is always `/bookings/<uuid>`, `/threads/<uuid>`,
+    /// `/contracts/<uuid>`, `/invoices/<uuid>`, `/reviews/<uuid>`.
+    private func destination(from href: String) -> Route? {
+        let parts = href.split(separator: "/").map(String.init)
+        guard parts.count >= 2 else { return nil }
+        let id = parts.last ?? ""
+        switch parts[0] {
+        case "bookings":  return .bookingDetail(bookingID: id)
+        case "threads":   return .thread(threadID: id)
+        case "contracts": return .contract(contractID: id)
+        case "invoices":  return .invoice(bookingID: id)
+        case "reviews":   return .review(bookingID: id)
+        default:          return nil
         }
     }
 }
 
 // MARK: - Row
 
-private struct NotificationRow: View {
-    let notification: MockNotification
+private struct NotificationCell: View {
+    let notification: NotificationRow
     let onTap: () -> Void
 
     var body: some View {
@@ -116,7 +186,7 @@ private struct NotificationRow: View {
                             .font(R.F.body(13.5, weight: .semibold))
                             .foregroundStyle(R.C.fg1)
                         Spacer(minLength: R.S.xs)
-                        Text(notification.when)
+                        Text(Self.relative(notification.createdAt))
                             .monoLabel(size: 8.5, tracking: 0.5, color: R.C.fg3)
                     }
                     Text(notification.body)
@@ -125,7 +195,7 @@ private struct NotificationRow: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                 }
-                if notification.unread {
+                if !notification.read {
                     Circle()
                         .fill(R.C.amber)
                         .frame(width: 7, height: 7)
@@ -155,23 +225,53 @@ private struct NotificationRow: View {
         }
     }
 
-    private func style(for kind: MockNotification.Kind) -> (String, Color) {
+    private func style(for kind: NotificationRow.Kind) -> (String, Color) {
         switch kind {
-        case .booking:  return ("calendar",                  R.C.fg1)
+        case .booking:  return ("calendar",                     R.C.fg1)
         case .message:  return ("bubble.left.and.bubble.right", R.C.blue)
-        case .payment:  return ("creditcard",                R.C.green)
-        case .contract: return ("doc.text",                  R.C.blue)
-        case .review:   return ("star.fill",                 R.C.amber)
-        case .calendar: return ("calendar.badge.clock",      R.C.fg2)
-        case .profile:  return ("person.fill",               R.C.fg2)
+        case .payment:  return ("creditcard",                   R.C.green)
+        case .contract: return ("doc.text",                     R.C.blue)
+        case .review:   return ("star.fill",                    R.C.amber)
+        case .calendar: return ("calendar.badge.clock",         R.C.fg2)
+        case .profile:  return ("person.fill",                  R.C.fg2)
+        case .other:    return ("bell",                         R.C.fg2)
         }
+    }
+
+    /// Short relative label: "2m ago", "Yesterday", "12 Apr".
+    private static func relative(_ date: Date) -> String {
+        let now = Date()
+        let delta = now.timeIntervalSince(date)
+        if delta < 60 { return "Just now" }
+        if delta < 3600 { return "\(Int(delta / 60))m ago" }
+        if delta < 86_400 { return "\(Int(delta / 3600))h ago" }
+        if delta < 2 * 86_400 { return "Yesterday" }
+        let f = DateFormatter()
+        f.dateFormat = "d MMM"
+        return f.string(from: date)
     }
 }
 
 #if DEBUG
 #Preview("NotificationsView") {
     let nav = NavigationModel()
+    let store = NotificationsStore()
+    store._testLoad([
+        NotificationRow(
+            id: UUID(), kind: .booking, title: "DJ NOVAK accepted",
+            body: "Your request for WHITE Dubai was accepted.",
+            createdAt: Date().addingTimeInterval(-120), read: false,
+            href: "/bookings/\(UUID().uuidString)"
+        ),
+        NotificationRow(
+            id: UUID(), kind: .payment, title: "Payment scheduled",
+            body: "AED 32K scheduled for 28 Apr.",
+            createdAt: Date().addingTimeInterval(-3600 * 3), read: true,
+            href: nil
+        )
+    ])
     return NotificationsView(nav: nav)
+        .environment(store)
         .preferredColorScheme(.dark)
 }
 #endif

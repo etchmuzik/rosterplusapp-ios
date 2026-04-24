@@ -16,6 +16,13 @@ public struct AppRoot: View {
     @State private var auth = AuthStore()
     @State private var roster = RosterStore()
     @State private var bookings = BookingsStore()
+    @State private var inbox = InboxStore()
+    @State private var notifications = NotificationsStore()
+    @State private var payments = PaymentsStore()
+    @State private var artistDetail = ArtistDetailStore()
+    // AnalyticsStore derives from BookingsStore; constructed lazily so
+    // it captures the same instance we inject below.
+    @State private var analytics: AnalyticsStore? = nil
 
     public init() {}
 
@@ -35,8 +42,16 @@ public struct AppRoot: View {
                         // server-side role after every fresh sign-in.
                         let svcRole: Role = role == "artist" ? .artist : .promoter
                         if nav.role != svcRole { nav.setRole(svcRole) }
-                        // Prefetch bookings for the signed-in user.
+                        // Prefetch all the user-scoped stores. Each is
+                        // idempotent — calling during an in-flight fetch
+                        // no-ops.
                         bookings.refresh(for: userID, role: svcRole)
+                        inbox.refresh(for: userID)
+                        notifications.refresh(for: userID)
+                        payments.refresh(for: userID)
+                        if analytics == nil {
+                            analytics = AnalyticsStore(bookings: bookings)
+                        }
                     }
             }
         }
@@ -44,6 +59,11 @@ public struct AppRoot: View {
         .environment(auth)
         .environment(roster)
         .environment(bookings)
+        .environment(inbox)
+        .environment(notifications)
+        .environment(payments)
+        .environment(artistDetail)
+        .environment(analytics ?? AnalyticsStore(bookings: bookings))
         .background(R.C.bg0.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .task {
@@ -159,8 +179,10 @@ private struct DetailRouter: View {
         Group {
             switch route {
             case .artist(let id):
-                let artist = MockData.artists.first { String($0.id) == id } ?? MockData.artists[0]
-                ArtistView(nav: nav, artist: artist)
+                // Route id is a UUID string in the live flow; fallback
+                // to a nil-UUID so the view still renders its loading
+                // skeleton for deep links with stale identifiers.
+                ArtistView(nav: nav, artistID: UUID(uuidString: id) ?? UUID())
 
             case .booking(let artistID):
                 BookingView(nav: nav, artistID: artistID)

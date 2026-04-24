@@ -1,21 +1,15 @@
 // PaymentsView.swift — Screen 10
 //
 // Payment list with stats. Port of `PaymentsScreen` at ios-app.jsx
-// line 884. Layout:
-//
-//   Greeting     — "Payments"
-//   KPI cards    — This month · Paid · Outstanding · Scheduled
-//   Filter chips — All · Paid · Pending · Scheduled
-//   Payment list — per-row: artist, event, date, amount (mono), status
-//
-// Tapping a row opens the matching booking's invoice (completed
-// bookings) or booking detail (pending/scheduled).
+// line 884. Wave 5.1: backed by PaymentsStore (public.payments via
+// bookings relation — RLS scopes to the signed-in user).
 
 import SwiftUI
 import DesignSystem
 
 public struct PaymentsView: View {
     @Bindable var nav: NavigationModel
+    @Environment(PaymentsStore.self) private var store
     @State private var filter: Filter = .all
 
     enum Filter: String, CaseIterable {
@@ -32,7 +26,7 @@ public struct PaymentsView: View {
                 header
                 kpiGrid
                 filterRow
-                list
+                content
                 Color.clear.frame(height: 100)
             }
             .padding(.horizontal, R.S.lg)
@@ -49,7 +43,7 @@ public struct PaymentsView: View {
                 .font(R.F.display(30, weight: .bold))
                 .tracking(-0.8)
                 .foregroundStyle(R.C.fg1)
-            Text("\(MockData.payments.count) payments this month")
+            Text("\(store.items.count) payments")
                 .monoLabel(size: 10, tracking: 0.6, color: R.C.fg3)
         }
     }
@@ -61,10 +55,10 @@ public struct PaymentsView: View {
             GridItem(.flexible(), spacing: R.S.sm),
             GridItem(.flexible(), spacing: R.S.sm)
         ], spacing: R.S.sm) {
-            KPITile(label: "This month", value: "AED 186K", accent: R.C.fg1)
-            KPITile(label: "Paid",        value: "AED 132K", accent: R.C.green)
-            KPITile(label: "Outstanding", value: "AED 42K",  accent: R.C.amber)
-            KPITile(label: "Scheduled",   value: "AED 12K",  accent: R.C.blue)
+            KPITile(label: "This month", value: formatMoney(store.monthTotal, ccy: monthCurrency), accent: R.C.fg1)
+            KPITile(label: "Paid",        value: formatMoney(sumAmount(store.paid), ccy: firstCcy(store.paid)), accent: R.C.green)
+            KPITile(label: "Outstanding", value: formatMoney(sumAmount(store.pending), ccy: firstCcy(store.pending)), accent: R.C.amber)
+            KPITile(label: "Scheduled",   value: formatMoney(sumAmount(store.scheduled), ccy: firstCcy(store.scheduled)), accent: R.C.blue)
         }
     }
 
@@ -82,32 +76,115 @@ public struct PaymentsView: View {
         }
     }
 
-    // MARK: — List
+    // MARK: — Content
+
+    @ViewBuilder
+    private var content: some View {
+        switch store.state {
+        case .idle, .loading:
+            loadingSkeleton
+        case .failed(let message):
+            failureCard(message)
+        case .loaded:
+            if filtered.isEmpty {
+                emptyState
+            } else {
+                list
+            }
+        }
+    }
 
     private var list: some View {
         VStack(spacing: R.S.xs) {
             ForEach(filtered) { p in
                 Button {
                     if p.status == .paid {
-                        nav.push(.invoice(bookingID: p.id))
+                        nav.push(.invoice(bookingID: p.id.uuidString))
                     } else {
-                        nav.push(.bookingDetail(bookingID: p.id))
+                        nav.push(.bookingDetail(bookingID: p.id.uuidString))
                     }
                 } label: {
-                    PaymentRow(payment: p)
+                    PaymentCell(payment: p)
                 }
                 .buttonStyle(.plain)
             }
         }
     }
 
-    private var filtered: [MockPayment] {
+    private var filtered: [PaymentRow] {
         switch filter {
-        case .all:       return MockData.payments
-        case .paid:      return MockData.payments.filter { $0.status == .paid }
-        case .pending:   return MockData.payments.filter { $0.status == .pending }
-        case .scheduled: return MockData.payments.filter { $0.status == .scheduled }
+        case .all:       return store.items
+        case .paid:      return store.paid
+        case .pending:   return store.pending
+        case .scheduled: return store.scheduled
         }
+    }
+
+    // MARK: — States
+
+    private var loadingSkeleton: some View {
+        VStack(spacing: R.S.xs) {
+            ForEach(0..<4, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                    .fill(R.C.glassLo)
+                    .frame(height: 64)
+            }
+        }
+        .redacted(reason: .placeholder)
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .center, spacing: 4) {
+            Text("No payments here yet")
+                .font(R.F.body(14, weight: .semibold))
+                .foregroundStyle(R.C.fg1)
+            Text("Paid bookings show up the moment the transfer lands.")
+                .font(R.F.body(12, weight: .regular))
+                .foregroundStyle(R.C.fg3)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, R.S.xxl)
+    }
+
+    private func failureCard(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: R.S.sm) {
+            Text("Couldn't load payments")
+                .font(R.F.body(13, weight: .semibold))
+                .foregroundStyle(R.C.fg1)
+            Text(message)
+                .font(R.F.body(12, weight: .regular))
+                .foregroundStyle(R.C.fg2)
+        }
+        .padding(R.S.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .fill(R.C.red.opacity(0.08))
+        }
+    }
+
+    // MARK: — Helpers
+
+    private func sumAmount(_ rows: [PaymentRow]) -> Double {
+        rows.reduce(0) { $0 + $1.amount }
+    }
+
+    private func firstCcy(_ rows: [PaymentRow]) -> String {
+        rows.first?.currency ?? store.items.first?.currency ?? "AED"
+    }
+
+    private var monthCurrency: String {
+        store.items.first?.currency ?? "AED"
+    }
+
+    private func formatMoney(_ amount: Double, ccy: String) -> String {
+        if amount >= 1000 {
+            let thousands = amount / 1000
+            let isWhole = thousands.truncatingRemainder(dividingBy: 1) == 0
+            return "\(ccy) \(isWhole ? "\(Int(thousands))" : String(format: "%.1f", thousands))K"
+        }
+        return "\(ccy) \(Int(amount))"
     }
 }
 
@@ -164,26 +241,26 @@ private struct FilterChip: View {
     }
 }
 
-// MARK: - Payment row
+// MARK: - Payment cell
 
-private struct PaymentRow: View {
-    let payment: MockPayment
+private struct PaymentCell: View {
+    let payment: PaymentRow
 
     var body: some View {
         HStack(spacing: R.S.md) {
-            Cover(seed: payment.artist, size: 40, cornerRadius: R.Rad.md)
+            Cover(seed: payment.artistName, size: 40, cornerRadius: R.Rad.md)
             VStack(alignment: .leading, spacing: 2) {
-                Text(payment.artist)
+                Text(payment.artistName)
                     .font(R.F.body(13.5, weight: .semibold))
                     .foregroundStyle(R.C.fg1)
-                Text(payment.event)
+                Text(payment.eventLabel)
                     .font(R.F.body(11.5, weight: .regular))
                     .foregroundStyle(R.C.fg2)
                     .lineLimit(1)
             }
             Spacer(minLength: R.S.sm)
             VStack(alignment: .trailing, spacing: 4) {
-                Text(payment.amount)
+                Text(payment.amountFormatted)
                     .font(R.F.mono(11, weight: .semibold))
                     .tracking(0.3)
                     .foregroundStyle(R.C.fg1)
@@ -197,9 +274,11 @@ private struct PaymentRow: View {
     private var pill: some View {
         let (label, color): (String, Color) = {
             switch payment.status {
-            case .paid:      return ("Paid", R.C.green)
-            case .pending:   return ("Pending", R.C.amber)
+            case .paid:      return ("Paid",      R.C.green)
+            case .pending:   return ("Pending",   R.C.amber)
             case .scheduled: return ("Scheduled", R.C.blue)
+            case .failed:    return ("Failed",    R.C.red)
+            case .refunded:  return ("Refunded",  R.C.fg3)
             }
         }()
         return Text(label)
@@ -220,7 +299,17 @@ private struct PaymentRow: View {
 #if DEBUG
 #Preview("PaymentsView") {
     let nav = NavigationModel()
+    let store = PaymentsStore()
+    store._testLoad([
+        PaymentRow(id: UUID(), artistName: "DJ NOVAK",  eventLabel: "WHITE Dubai · Tue 24",
+                   amount: 28_000, currency: "AED", amountFormatted: "AED 28K",
+                   status: .paid, eventDate: Date(), paidAt: Date()),
+        PaymentRow(id: UUID(), artistName: "ORION KAI", eventLabel: "Blu Dahlia · Fri 27",
+                   amount: 42_000, currency: "SAR", amountFormatted: "SAR 42K",
+                   status: .pending, eventDate: Date().addingTimeInterval(86400 * 3), paidAt: nil)
+    ])
     return PaymentsView(nav: nav)
+        .environment(store)
         .preferredColorScheme(.dark)
 }
 #endif

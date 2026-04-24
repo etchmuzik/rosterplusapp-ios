@@ -3,17 +3,17 @@
 // Read-only month view for the artist. Port of `CalendarScreen` at
 // ios-app.jsx line 1279.
 //
-// Distinct from the tappable AvailabilityView in screen 21 — this one
-// is a pure month-overview where booked + blocked dates are marked
-// with dots and tapping navigates to the relevant booking detail.
-// Think of it as the artist's version of the promoter's Bookings tab
-// expressed spatially.
+// Wave 5.1: booked-day marks are derived from BookingsStore. Blocked
+// days will come from artists.blocked_dates once AvailabilityView wires
+// that column through; for now blocked marks are inferred from past
+// bookings the user has confirmed.
 
 import SwiftUI
 import DesignSystem
 
 public struct CalendarView: View {
     @Bindable var nav: NavigationModel
+    @Environment(BookingsStore.self) private var bookings
 
     @State private var visibleMonth: Date = Date()
 
@@ -52,7 +52,7 @@ public struct CalendarView: View {
                 .font(R.F.display(30, weight: .bold))
                 .tracking(-0.8)
                 .foregroundStyle(R.C.fg1)
-            Text("\(MockData.upcoming.count) gigs · \(blockedCount) blocked days")
+            Text("\(bookingsThisMonth.count) gigs · \(blockedCount) blocked days")
                 .monoLabel(size: 10, tracking: 0.6, color: R.C.fg3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -131,7 +131,7 @@ public struct CalendarView: View {
         HStack(spacing: R.S.lg) {
             LegendDot(color: R.C.fg1, label: "Today", ring: true)
             LegendDot(color: R.C.green, label: "Booked")
-            LegendDot(color: R.C.red, label: "Blocked")
+            LegendDot(color: R.C.red, label: "Past")
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }
@@ -143,14 +143,22 @@ public struct CalendarView: View {
             Text("This month's gigs")
                 .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
                 .padding(.horizontal, R.S.lg)
-            VStack(spacing: R.S.xs) {
-                ForEach(MockData.upcoming) { booking in
-                    GigRow(booking: booking) {
-                        nav.push(.bookingDetail(bookingID: booking.id))
+            if bookingsThisMonth.isEmpty {
+                Text("No gigs this month.")
+                    .font(R.F.body(12, weight: .regular))
+                    .foregroundStyle(R.C.fg3)
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.vertical, R.S.md)
+            } else {
+                VStack(spacing: R.S.xs) {
+                    ForEach(bookingsThisMonth) { booking in
+                        GigRow(booking: booking) {
+                            nav.push(.bookingDetail(bookingID: booking.id.uuidString))
+                        }
                     }
                 }
+                .padding(.horizontal, R.S.lg)
             }
-            .padding(.horizontal, R.S.lg)
         }
     }
 
@@ -170,8 +178,11 @@ public struct CalendarView: View {
     private var cells: [DayCell] {
         let cal = Calendar.current
         var out: [DayCell] = []
-        let firstOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: visibleMonth))!
+        guard let firstOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: visibleMonth)) else {
+            return []
+        }
         let range = cal.range(of: .day, in: .month, for: visibleMonth) ?? 1..<31
+        // Shift weekday so Monday=0, Sunday=6 (matches the header row).
         let weekday = (cal.component(.weekday, from: firstOfMonth) + 5) % 7
 
         for i in 0..<weekday {
@@ -187,19 +198,28 @@ public struct CalendarView: View {
         return out
     }
 
-    /// Mock: mark upcoming dates as booked, odd days as blocked when < 5,
-    /// so the preview reads as a realistic mix.
+    /// All bookings whose eventDate lands in the visible month.
+    private var bookingsThisMonth: [BookingRow] {
+        let cal = Calendar.current
+        let all = bookings.upcoming + bookings.past
+        return all
+            .filter { cal.isDate($0.eventDate, equalTo: visibleMonth, toGranularity: .month) }
+            .sorted { $0.eventDate < $1.eventDate }
+    }
+
+    /// Dates with at least one booking (upcoming or past). Past marks
+    /// render as the "blocked" (red) colour so the month reads as a
+    /// history glance.
     private func markFor(_ date: Date) -> DayMark? {
         let cal = Calendar.current
-        let day = cal.component(.day, from: date)
-        // Booked matches upcoming bookings' parsed day numbers.
-        let bookedDays: Set<Int> = [24, 27, 28]
-        if bookedDays.contains(day) { return .booked }
-        // Blocked — first 3 odd weekdays of the month.
-        if day <= 5 && day % 2 == 1 { return .blocked }
+        let all = bookings.upcoming + bookings.past
+        if all.contains(where: { cal.isDate($0.eventDate, inSameDayAs: date) }) {
+            return date >= cal.startOfDay(for: Date()) ? .booked : .blocked
+        }
         return nil
     }
 
+    /// Past bookings in the visible month count as "blocked" (used).
     private var blockedCount: Int {
         cells.compactMap { $0.date }.reduce(0) { acc, d in
             markFor(d) == .blocked ? acc + 1 : acc
@@ -288,18 +308,18 @@ private struct LegendDot: View {
 // MARK: - Gig row
 
 private struct GigRow: View {
-    let booking: MockBooking
+    let booking: BookingRow
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: R.S.md) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(booking.day)
+                    Text(Self.dayFormatter.string(from: booking.eventDate).uppercased())
                         .font(R.F.mono(10, weight: .bold))
                         .tracking(0.8)
                         .foregroundStyle(R.C.fg1)
-                    Text(booking.time)
+                    Text(Self.timeFormatter.string(from: booking.eventDate))
                         .font(R.F.mono(9, weight: .medium))
                         .tracking(0.6)
                         .foregroundStyle(R.C.fg3)
@@ -307,10 +327,10 @@ private struct GigRow: View {
                 .frame(width: 54, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(booking.venue)
+                    Text(booking.venueName)
                         .font(R.F.body(13.5, weight: .semibold))
                         .foregroundStyle(R.C.fg1)
-                    Text(booking.artist)
+                    Text(booking.artistName)
                         .font(R.F.body(11.5, weight: .regular))
                         .foregroundStyle(R.C.fg2)
                 }
@@ -322,12 +342,36 @@ private struct GigRow: View {
         }
         .buttonStyle(.plain)
     }
+
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE d"
+        return f
+    }()
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
 }
 
 #if DEBUG
 #Preview("CalendarView") {
     let nav = NavigationModel()
+    let bookings = BookingsStore()
+    bookings._testLoad(
+        upcoming: [
+            BookingRow(id: UUID(), eventName: "Rooftop", artistName: "DJ NOVAK",
+                       venueName: "WHITE Dubai",
+                       eventDate: Date().addingTimeInterval(3 * 86_400),
+                       status: "confirmed",
+                       feeFormatted: "AED 28K", currency: "AED", fee: 28_000)
+        ],
+        past: []
+    )
     return CalendarView(nav: nav)
+        .environment(bookings)
         .preferredColorScheme(.dark)
 }
 #endif

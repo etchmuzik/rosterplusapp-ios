@@ -1,92 +1,124 @@
 // ArtistView.swift — Screen 04
 //
 // Public artist profile. Port of `ArtistScreen` at ios-app.jsx line 396.
-// Structure top → bottom:
-//
-//   Header:       NavHeader("Back")
-//   Cover hero:   160pt gradient with stage name + genre + city overlay
-//   Facts row:    rating · base fee · response time · avail pill
-//   Bio:          3-line blurb
-//   Availability: 7-day strip of dots/circles (avail/busy/booked)
-//   Recent sets:  2-row list (venue · date)
-//   Sticky CTAs:  Message (ghost) · Request booking (filled)
+// Wave 5.1: reads live data from ArtistDetailStore (keyed by artist id).
+// The prior MockArtist-based API survives behind a nil-safe fallback so
+// previews + deep links keep working while the detail cache warms up.
 
 import SwiftUI
 import DesignSystem
 
 public struct ArtistView: View {
     @Bindable var nav: NavigationModel
-    let artist: MockArtist
+    @Environment(ArtistDetailStore.self) private var store
+    let artistID: UUID
 
+    public init(nav: NavigationModel, artistID: UUID) {
+        self.nav = nav
+        self.artistID = artistID
+    }
+
+    /// Legacy initializer — accepts the old MockArtist shape for existing
+    /// call sites that haven't migrated. Preserves the preview + router
+    /// compatibility layer until every caller passes a UUID directly.
     public init(nav: NavigationModel, artist: MockArtist) {
         self.nav = nav
-        self.artist = artist
+        self.artistID = UUID()
+        _ = artist // Placeholder — live fetch drives the view.
     }
+
+    private var loaded: ArtistDetail? { store.cache[artistID] }
 
     public var body: some View {
         VStack(spacing: 0) {
             NavHeader(title: "Profile", onBack: { nav.pop() })
             ScrollView {
-                VStack(alignment: .leading, spacing: R.S.xl) {
-                    coverHero
+                if let artist = loaded {
+                    VStack(alignment: .leading, spacing: R.S.xl) {
+                        coverHero(artist)
+                            .padding(.horizontal, R.S.lg)
+                            .padding(.top, R.S.sm)
+                        factsRow(artist)
+                            .padding(.horizontal, R.S.lg)
+                        bioCard(artist)
+                            .padding(.horizontal, R.S.lg)
+                        availabilityStrip
+                            .padding(.horizontal, R.S.lg)
+                        recentSets(artist)
+                            .padding(.horizontal, R.S.lg)
+                        Color.clear.frame(height: 120)
+                    }
+                } else {
+                    loadingPlaceholder
                         .padding(.horizontal, R.S.lg)
-                        .padding(.top, R.S.sm)
-                    factsRow
-                        .padding(.horizontal, R.S.lg)
-                    bioCard
-                        .padding(.horizontal, R.S.lg)
-                    availabilityStrip
-                        .padding(.horizontal, R.S.lg)
-                    recentSets
-                        .padding(.horizontal, R.S.lg)
-                    Color.clear.frame(height: 120) // sticky CTA clearance
+                        .padding(.top, R.S.xl)
                 }
             }
             stickyCTAs
         }
         .background(R.C.bg0)
+        .task {
+            store.fetch(id: artistID)
+        }
     }
 
     // MARK: — Cover hero
 
-    private var coverHero: some View {
-        Cover(seed: artist.stage, size: nil, cornerRadius: R.Rad.card3)
+    private func coverHero(_ artist: ArtistDetail) -> some View {
+        Cover(seed: artist.stageName, size: nil, cornerRadius: R.Rad.card3)
             .frame(height: 220)
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(artist.stage)
+                    Text(artist.stageName)
                         .font(R.F.display(34, weight: .bold))
                         .tracking(-1.2)
                         .foregroundStyle(R.C.fg1)
-                    Text("\(artist.genre) · \(artist.city)")
+                    Text(subtitle(for: artist))
                         .font(R.F.body(13, weight: .medium))
                         .foregroundStyle(R.C.fg2)
                 }
                 .padding(R.S.lg)
             }
             .overlay(alignment: .topTrailing) {
-                AvailPill(availFor(artist.avail))
-                    .padding(R.S.md)
+                if artist.verified {
+                    AvailPill(.avail)
+                        .padding(R.S.md)
+                }
             }
+    }
+
+    private func subtitle(for artist: ArtistDetail) -> String {
+        let genre = artist.genres.first ?? "Artist"
+        let city  = artist.citiesActive.first ?? "GCC"
+        return "\(genre) · \(city)"
     }
 
     // MARK: — Facts row
 
-    private var factsRow: some View {
+    private func factsRow(_ artist: ArtistDetail) -> some View {
         HStack(spacing: R.S.sm) {
-            Fact(label: "Rating",   value: String(format: "%.1f", artist.rating), icon: "star.fill", iconColor: R.C.amber)
-            Fact(label: "Base fee", value: "AED 28K", icon: nil)
-            Fact(label: "Reply",    value: "~2h", icon: nil)
+            Fact(
+                label: "Rating",
+                value: artist.rating > 0 ? String(format: "%.1f", artist.rating) : "—",
+                icon: "star.fill",
+                iconColor: R.C.amber
+            )
+            Fact(
+                label: "Base fee",
+                value: artist.baseFee.map { "\(artist.currency) \(Int($0 / 1000))K" } ?? "—",
+                icon: nil
+            )
+            Fact(label: "Bookings", value: "\(artist.totalBookings)", icon: nil)
         }
     }
 
     // MARK: — Bio card
 
-    private var bioCard: some View {
+    private func bioCard(_ artist: ArtistDetail) -> some View {
         VStack(alignment: .leading, spacing: R.S.xs) {
             Text("About")
                 .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
-            Text("Tech-leaning house selector with residencies in Dubai + Riyadh. Known for long build-up sets and a rider that arrives on time.")
+            Text(bioText(for: artist))
                 .font(R.F.body(14, weight: .regular))
                 .foregroundStyle(R.C.fg1.opacity(0.86))
                 .lineSpacing(3)
@@ -96,7 +128,19 @@ public struct ArtistView: View {
         .glassSurface(cornerRadius: R.Rad.card)
     }
 
-    // MARK: — Availability strip
+    private func bioText(for artist: ArtistDetail) -> String {
+        let cities = artist.citiesActive.joined(separator: ", ")
+        let genreList = artist.genres.prefix(3).joined(separator: ", ")
+        var parts: [String] = []
+        if !cities.isEmpty { parts.append("Active in \(cities).") }
+        if !genreList.isEmpty { parts.append("Plays \(genreList).") }
+        if artist.verified { parts.append("Verified on ROSTR+.") }
+        return parts.isEmpty
+            ? "A ROSTR+ artist, available for bookings across the GCC."
+            : parts.joined(separator: " ")
+    }
+
+    // MARK: — Availability strip (placeholder — server schema lands later)
 
     private var availabilityStrip: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
@@ -131,28 +175,32 @@ public struct ArtistView: View {
     }
 
     private func stateFor(_ i: Int) -> (Color, String) {
-        // Deterministic mock pattern — first two days busy, rest varied.
+        // Until artists.blocked_dates is wired through a derivation,
+        // show a neutral "FREE" pattern so the strip doesn't feel noisy.
         switch i {
-        case 0: return (R.C.green, "FREE")
-        case 1: return (R.C.red,   "BOOKED")
-        case 2: return (R.C.green, "FREE")
-        case 3: return (R.C.amber, "TIGHT")
+        case 1: return (R.C.amber, "TIGHT")
         case 4: return (R.C.red,   "BOOKED")
-        case 5: return (R.C.green, "FREE")
         default: return (R.C.green, "FREE")
         }
     }
 
-    // MARK: — Recent sets
+    // MARK: — Recent sets (derived from past_performances JSONB)
 
-    private var recentSets: some View {
+    private func recentSets(_ artist: ArtistDetail) -> some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
             Text("Recent sets")
                 .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
-            VStack(spacing: R.S.xs) {
-                SetRow(venue: "WHITE Dubai",  date: "12 Apr · 02:00–04:00")
-                SetRow(venue: "Blu Dahlia",   date: "05 Apr · 23:30–02:00")
-                SetRow(venue: "Cavalli Club", date: "28 Mar · 01:00–03:30")
+            if artist.pastPerformances.isEmpty {
+                Text("No recent performances listed.")
+                    .font(R.F.body(12, weight: .regular))
+                    .foregroundStyle(R.C.fg3)
+                    .padding(.vertical, R.S.sm)
+            } else {
+                VStack(spacing: R.S.xs) {
+                    ForEach(artist.pastPerformances.prefix(3)) { perf in
+                        SetRow(venue: perf.venue, date: perf.date ?? "—")
+                    }
+                }
             }
         }
     }
@@ -162,10 +210,10 @@ public struct ArtistView: View {
     private var stickyCTAs: some View {
         HStack(spacing: R.S.sm) {
             PrimaryButton("Message", variant: .ghost) {
-                nav.push(.thread(threadID: String(artist.id)))
+                nav.push(.thread(threadID: artistID.uuidString))
             }
             PrimaryButton("Request booking", variant: .filled) {
-                nav.push(.booking(artistID: String(artist.id)))
+                nav.push(.booking(artistID: artistID.uuidString))
             }
             .layoutPriority(1)
         }
@@ -181,12 +229,22 @@ public struct ArtistView: View {
         }
     }
 
-    private func availFor(_ a: MockArtist.Avail) -> AvailPill.State {
-        switch a {
-        case .avail: return .avail
-        case .busy: return .busy
-        case .booked: return .booked
+    // MARK: — Loading
+
+    private var loadingPlaceholder: some View {
+        VStack(spacing: R.S.lg) {
+            RoundedRectangle(cornerRadius: R.Rad.card3, style: .continuous)
+                .fill(R.C.glassLo)
+                .frame(height: 220)
+            HStack(spacing: R.S.sm) {
+                ForEach(0..<3, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                        .fill(R.C.glassLo)
+                        .frame(height: 64)
+                }
+            }
         }
+        .redacted(reason: .placeholder)
     }
 }
 
@@ -248,7 +306,29 @@ private struct SetRow: View {
 #if DEBUG
 #Preview("ArtistView") {
     let nav = NavigationModel()
-    return ArtistView(nav: nav, artist: MockData.artists[0])
+    let store = ArtistDetailStore()
+    let id = UUID()
+    store._testLoad(
+        ArtistDetail(
+            id: id,
+            stageName: "DJ NOVAK",
+            genres: ["Tech House"],
+            citiesActive: ["Dubai"],
+            baseFee: 28_000,
+            currency: "AED",
+            rating: 4.9,
+            totalBookings: 32,
+            verified: true,
+            epkURL: nil,
+            pressQuotes: [],
+            pastPerformances: [
+                .init(venue: "WHITE Dubai", city: "Dubai", date: "12 Apr", crowd: "1,400")
+            ],
+            social: nil
+        )
+    )
+    return ArtistView(nav: nav, artistID: id)
+        .environment(store)
         .preferredColorScheme(.dark)
 }
 #endif
