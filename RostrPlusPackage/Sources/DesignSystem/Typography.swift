@@ -61,15 +61,34 @@ public extension R {
 
         // MARK: Mono — JetBrains Mono
         //
+        // The JetBrains Mono static TTFs register as four separate
+        // PostScript families (JetBrainsMono-Regular, -Medium,
+        // -SemiBold, -Bold) rather than one family with weight
+        // variants. Core Text then can't resolve .weight(.medium) on
+        // the base "JetBrainsMono" family. We bypass that by picking
+        // the full PostScript name directly per weight.
+        //
         // Paired with .tracking() at the call site; most mono labels also
         // set .textCase(.uppercase). Helper builder below handles both.
 
         public static func mono(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-            .custom(monoFamily, size: size, relativeTo: .caption).weight(weight)
+            .custom(monoPostScriptName(for: weight), size: size, relativeTo: .caption)
         }
 
         public static func monoFixed(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-            .custom(monoFamily, fixedSize: size).weight(weight)
+            .custom(monoPostScriptName(for: weight), fixedSize: size)
+        }
+
+        /// Pick the JetBrains Mono file whose PostScript name matches
+        /// the requested weight. Anything outside our bundled set falls
+        /// back to Regular.
+        private static func monoPostScriptName(for weight: Font.Weight) -> String {
+            switch weight {
+            case .bold, .heavy, .black: return "JetBrainsMono-Bold"
+            case .semibold:             return "JetBrainsMono-SemiBold"
+            case .medium:               return "JetBrainsMono-Medium"
+            default:                    return "JetBrainsMono-Regular"
+            }
         }
     }
 }
