@@ -11,14 +11,17 @@
 //                   View invoice (filled, appears only when status
 //                   is completed)
 //
-// Invoice CTA gated per plan: completed + any payment exists. The mock
-// data here hardcodes a "completed" booking so the button shows.
+// Track 2 pass 2: reads from BookingsStore.detailCache (warmed by the
+// list fetch) with a fallback fetch via fetchDetail(id:). Timeline is
+// still derived from MockData — live events come later, in Wave 5.1
+// when the `booking_events` table lands.
 
 import SwiftUI
 import DesignSystem
 
 public struct BookingDetailView: View {
     @Bindable var nav: NavigationModel
+    @Environment(BookingsStore.self) private var bookings
     let bookingID: String
 
     public init(nav: NavigationModel, bookingID: String) {
@@ -26,39 +29,57 @@ public struct BookingDetailView: View {
         self.bookingID = bookingID
     }
 
+    private var resolvedUUID: UUID? { UUID(uuidString: bookingID) }
+
+    private var row: BookingRow? {
+        guard let id = resolvedUUID else { return nil }
+        return bookings.detailCache[id]
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             NavHeader(title: "Booking", onBack: { nav.pop() })
             ScrollView {
-                VStack(alignment: .leading, spacing: R.S.lg) {
-                    hero
-                    factsGrid
-                    timeline
-                    actions
-                    Color.clear.frame(height: R.S.xxl)
+                if let row {
+                    VStack(alignment: .leading, spacing: R.S.lg) {
+                        hero(for: row)
+                        factsGrid(for: row)
+                        timeline
+                        actions(for: row)
+                        Color.clear.frame(height: R.S.xxl)
+                    }
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.top, R.S.sm)
+                } else {
+                    loadingPlaceholder
+                        .padding(.horizontal, R.S.lg)
+                        .padding(.top, R.S.lg)
                 }
-                .padding(.horizontal, R.S.lg)
-                .padding(.top, R.S.sm)
             }
         }
         .background(R.C.bg0)
+        .task {
+            if let id = resolvedUUID {
+                bookings.fetchDetail(id: id)
+            }
+        }
     }
 
     // MARK: — Hero
 
-    private var hero: some View {
+    private func hero(for row: BookingRow) -> some View {
         VStack(alignment: .leading, spacing: R.S.md) {
             HStack {
-                Text("TUE 24 APR · 23:00")
+                Text(Self.heroDateFormatter.string(from: row.eventDate).uppercased())
                     .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
                 Spacer()
-                StatusTag(.completed)
+                StatusTag(statusTag(for: row.status))
             }
-            Text("DJ NOVAK")
+            Text(row.artistName.uppercased())
                 .font(R.F.display(30, weight: .bold))
                 .tracking(-1.0)
                 .foregroundStyle(R.C.fg1)
-            Text("WHITE Dubai · Dubai, UAE")
+            Text(venueSubtitle(for: row))
                 .font(R.F.body(13, weight: .medium))
                 .foregroundStyle(R.C.fg2)
         }
@@ -67,21 +88,36 @@ public struct BookingDetailView: View {
         .glassSurface(cornerRadius: R.Rad.card3)
     }
 
+    private func venueSubtitle(for row: BookingRow) -> String {
+        row.eventName.isEmpty || row.eventName == "Event"
+            ? row.venueName
+            : "\(row.venueName) · \(row.eventName)"
+    }
+
     // MARK: — Facts grid
 
-    private var factsGrid: some View {
+    private func factsGrid(for row: BookingRow) -> some View {
         LazyVGrid(columns: [
             GridItem(.flexible(), spacing: R.S.sm),
             GridItem(.flexible(), spacing: R.S.sm)
         ], spacing: R.S.sm) {
-            FactCell(label: "Fee",        value: "AED 28,000", isMono: true)
-            FactCell(label: "Set length", value: "4h 00m",      isMono: true)
-            FactCell(label: "Rider",      value: "Confirmed",   valueColor: R.C.green)
-            FactCell(label: "Contract",   value: "Signed",      valueColor: R.C.fg1)
+            FactCell(label: "Fee",        value: row.feeFormatted,          isMono: true)
+            FactCell(label: "Date",       value: Self.factDateFormatter.string(from: row.eventDate), isMono: true)
+            FactCell(label: "Status",     value: row.status.capitalized,    valueColor: statusColor(row.status))
+            FactCell(label: "Currency",   value: row.currency,              isMono: true)
         }
     }
 
-    // MARK: — Timeline
+    private func statusColor(_ raw: String) -> Color {
+        switch raw {
+        case "confirmed", "completed": return R.C.green
+        case "pending":                return R.C.amber
+        case "cancelled":              return R.C.red
+        default:                       return R.C.fg1
+        }
+    }
+
+    // MARK: — Timeline (still mock — live events pending)
 
     private var timeline: some View {
         VStack(alignment: .leading, spacing: R.S.md) {
@@ -104,7 +140,7 @@ public struct BookingDetailView: View {
 
     // MARK: — Actions
 
-    private var actions: some View {
+    private func actions(for row: BookingRow) -> some View {
         VStack(spacing: R.S.sm) {
             PrimaryButton("Message artist", variant: .ghost) {
                 nav.push(.thread(threadID: bookingID))
@@ -113,11 +149,61 @@ public struct BookingDetailView: View {
                 nav.push(.contract(contractID: bookingID))
             }
             // Completed + payment exists → invoice CTA is primary.
-            PrimaryButton("View invoice", variant: .filled) {
-                nav.push(.invoice(bookingID: bookingID))
+            if row.status == "completed" {
+                PrimaryButton("View invoice", variant: .filled) {
+                    nav.push(.invoice(bookingID: bookingID))
+                }
             }
         }
     }
+
+    // MARK: — Loading
+
+    private var loadingPlaceholder: some View {
+        VStack(alignment: .leading, spacing: R.S.lg) {
+            RoundedRectangle(cornerRadius: R.Rad.card3, style: .continuous)
+                .fill(R.C.glassLo)
+                .frame(height: 140)
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: R.S.sm),
+                GridItem(.flexible(), spacing: R.S.sm)
+            ], spacing: R.S.sm) {
+                ForEach(0..<4, id: \.self) { _ in
+                    RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                        .fill(R.C.glassLo)
+                        .frame(height: 64)
+                }
+            }
+        }
+        .redacted(reason: .placeholder)
+    }
+
+    // MARK: — Status mapping
+
+    private func statusTag(for raw: String) -> StatusTag.Status {
+        switch raw {
+        case "confirmed":  return .confirmed
+        case "pending":    return .pending
+        case "contracted": return .contracted
+        case "completed":  return .completed
+        case "cancelled":  return .pending
+        default:           return .pending
+        }
+    }
+
+    // MARK: — Formatters
+
+    private static let heroDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE d MMM · HH:mm"
+        return f
+    }()
+
+    private static let factDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM yyyy"
+        return f
+    }()
 }
 
 // MARK: - Fact cell
@@ -188,7 +274,26 @@ private struct TimelineRow: View {
 #if DEBUG
 #Preview("BookingDetailView") {
     let nav = NavigationModel()
-    return BookingDetailView(nav: nav, bookingID: "demo")
+    let bookings = BookingsStore()
+    let id = UUID()
+    bookings._testLoad(
+        upcoming: [
+            BookingRow(
+                id: id,
+                eventName: "Rooftop Set",
+                artistName: "DJ Novak",
+                venueName: "Sky Lounge Dubai",
+                eventDate: Date().addingTimeInterval(3 * 86_400),
+                status: "confirmed",
+                feeFormatted: "AED 28K",
+                currency: "AED",
+                fee: 28_000
+            )
+        ],
+        past: []
+    )
+    return BookingDetailView(nav: nav, bookingID: id.uuidString)
+        .environment(bookings)
         .preferredColorScheme(.dark)
 }
 #endif

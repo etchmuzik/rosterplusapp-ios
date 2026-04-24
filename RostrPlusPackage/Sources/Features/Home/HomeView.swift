@@ -19,9 +19,22 @@ import UIKit
 
 public struct HomeView: View {
     @Bindable var nav: NavigationModel
+    @Environment(BookingsStore.self) private var bookings
+    @Environment(AuthStore.self) private var auth
 
     public init(nav: NavigationModel) {
         self.nav = nav
+    }
+
+    /// Derived first-name for the greeting. Falls back to "there"
+    /// until the auth session is loaded.
+    private var firstName: String {
+        guard case .signedIn(_, let email, _) = auth.state else { return "there" }
+        // Very small heuristic — pick the email local-part's first token.
+        // Real display name lands once we thread through the profile row.
+        let local = email.split(separator: "@").first.map(String.init) ?? ""
+        if local.isEmpty { return "there" }
+        return local.split(separator: ".").first.map { $0.capitalized } ?? "there"
     }
 
     public var body: some View {
@@ -51,7 +64,7 @@ public struct HomeView: View {
                 Text("Good evening,")
                     .font(R.F.body(13, weight: .regular))
                     .foregroundStyle(R.C.fg2)
-                Text("Hesham")
+                Text(firstName)
                     .font(R.F.display(26, weight: .bold))
                     .tracking(-0.6)
                     .foregroundStyle(R.C.fg1)
@@ -132,31 +145,44 @@ public struct HomeView: View {
     }
 
     // MARK: — Tonight card
+    //
+    // "Tonight" = the next upcoming booking. If none, falls back to a
+    // friendlier empty card that nudges promoters to book an artist.
 
+    @ViewBuilder
     private var tonightCard: some View {
+        if let next = bookings.upcoming.first {
+            tonightCardContent(for: next)
+        } else {
+            emptyTonightCard
+        }
+    }
+
+    private func tonightCardContent(for booking: BookingRow) -> some View {
         VStack(alignment: .leading, spacing: R.S.md) {
             HStack {
-                Text("Tonight · Dubai")
+                Text(nextEventLine(booking))
                     .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
                 Spacer()
-                StatusTag(.confirmed)
+                StatusTag(statusTag(for: booking.status))
             }
 
-            Text("DJ NOVAK")
+            Text(booking.artistName.uppercased())
                 .font(R.F.display(36, weight: .bold))
                 .tracking(-1.2)
                 .foregroundStyle(R.C.fg1)
                 .padding(.top, 2)
 
-            Text("WHITE Dubai · 23:00–03:00")
+            Text("\(booking.venueName) · \(booking.eventName)")
                 .font(R.F.body(13, weight: .medium))
                 .foregroundStyle(R.C.fg2)
+                .lineLimit(2)
 
             HStack(spacing: R.S.sm) {
                 Button {
-                    // Placeholder: open runsheet
+                    nav.push(.bookingDetail(bookingID: booking.id.uuidString))
                 } label: {
-                    Text("Open runsheet")
+                    Text("Open booking")
                         .font(R.F.mono(10.5, weight: .semibold))
                         .tracking(0.6)
                         .textCase(.uppercase)
@@ -171,7 +197,7 @@ public struct HomeView: View {
                 .buttonStyle(.plain)
 
                 Button {
-                    nav.push(.thread(threadID: "dj-novak"))
+                    nav.push(.thread(threadID: booking.id.uuidString))
                 } label: {
                     Text("Message")
                         .font(R.F.mono(10.5, weight: .semibold))
@@ -197,18 +223,80 @@ public struct HomeView: View {
         .glassSurface(cornerRadius: R.Rad.card3)
     }
 
+    private var emptyTonightCard: some View {
+        VStack(alignment: .leading, spacing: R.S.sm) {
+            Text("No upcoming bookings")
+                .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
+            Text("Book an artist")
+                .font(R.F.display(28, weight: .bold))
+                .tracking(-0.8)
+                .foregroundStyle(R.C.fg1)
+            Text("Your next gig will land here the moment you send a request.")
+                .font(R.F.body(13, weight: .regular))
+                .foregroundStyle(R.C.fg2)
+
+            Button {
+                nav.setTab(.roster)
+            } label: {
+                Text("Browse roster")
+                    .font(R.F.mono(10.5, weight: .semibold))
+                    .tracking(0.6)
+                    .textCase(.uppercase)
+                    .foregroundStyle(R.C.bg0)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background {
+                        RoundedRectangle(cornerRadius: R.Rad.md, style: .continuous)
+                            .fill(R.C.fg1)
+                    }
+            }
+            .buttonStyle(.plain)
+            .padding(.top, R.S.xs)
+        }
+        .padding(R.S.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassSurface(cornerRadius: R.Rad.card3)
+    }
+
+    /// "Tonight · Dubai" when the event is today, otherwise "TUE 24 · venue".
+    private func nextEventLine(_ b: BookingRow) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(b.eventDate) { return "Tonight" }
+        if cal.isDateInTomorrow(b.eventDate) { return "Tomorrow" }
+        let f = DateFormatter()
+        f.dateFormat = "EEE d MMM"
+        return f.string(from: b.eventDate).uppercased()
+    }
+
+    private func statusTag(for raw: String) -> StatusTag.Status {
+        switch raw {
+        case "confirmed":  return .confirmed
+        case "contracted": return .contracted
+        case "completed":  return .completed
+        case "cancelled":  return .cancelled
+        default:           return .pending
+        }
+    }
+
     // MARK: — Quick stats
 
     private var quickStatsRow: some View {
-        HStack(spacing: R.S.sm) {
-            StatTile(label: "Upcoming", value: "12")
-            StatTile(label: "Pending",  value: "03", accent: R.C.amber)
-            StatTile(label: "This month", value: "AED 186K", isMonoValue: true)
+        let s = bookings.stats
+        return HStack(spacing: R.S.sm) {
+            StatTile(label: "Upcoming",   value: formatTwoDigit(s.upcomingCount))
+            StatTile(label: "Pending",    value: formatTwoDigit(s.pendingCount), accent: R.C.amber)
+            StatTile(label: "This month", value: s.monthTotal, isMonoValue: true)
         }
+    }
+
+    /// 01 / 02 / 12 — matches the mono zero-padding in the JSX.
+    private func formatTwoDigit(_ n: Int) -> String {
+        String(format: "%02d", n)
     }
 
     // MARK: — Up next
 
+    @ViewBuilder
     private var upNextSection: some View {
         VStack(alignment: .leading, spacing: R.S.md) {
             HStack {
@@ -228,14 +316,22 @@ public struct HomeView: View {
             }
             .padding(.horizontal, R.S.lg)
 
-            VStack(spacing: R.S.xs) {
-                ForEach(MockData.upcoming) { booking in
-                    UpNextRow(booking: booking) {
-                        nav.push(.bookingDetail(bookingID: booking.id))
+            if bookings.upNext.isEmpty {
+                Text("Nothing scheduled yet.")
+                    .font(R.F.body(12, weight: .regular))
+                    .foregroundStyle(R.C.fg3)
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.vertical, R.S.md)
+            } else {
+                VStack(spacing: R.S.xs) {
+                    ForEach(bookings.upNext) { row in
+                        UpNextRow(row: row) {
+                            nav.push(.bookingDetail(bookingID: row.id.uuidString))
+                        }
                     }
                 }
+                .padding(.horizontal, R.S.lg)
             }
-            .padding(.horizontal, R.S.lg)
         }
     }
 }
@@ -268,18 +364,18 @@ private struct StatTile: View {
 // MARK: - Up-next row
 
 private struct UpNextRow: View {
-    let booking: MockBooking
+    let row: BookingRow
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             HStack(alignment: .center, spacing: R.S.md) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(booking.day)
+                    Text(dayLabel)
                         .font(R.F.mono(10, weight: .bold))
                         .tracking(0.8)
                         .foregroundStyle(R.C.fg1)
-                    Text(booking.time)
+                    Text(timeLabel)
                         .font(R.F.mono(9, weight: .medium))
                         .tracking(0.6)
                         .foregroundStyle(R.C.fg3)
@@ -287,21 +383,21 @@ private struct UpNextRow: View {
                 .frame(width: 54, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(booking.artist)
+                    Text(row.artistName)
                         .font(R.F.body(14, weight: .semibold))
                         .foregroundStyle(R.C.fg1)
-                    Text(booking.venue)
+                    Text(row.venueName)
                         .font(R.F.body(11.5, weight: .regular))
                         .foregroundStyle(R.C.fg2)
                 }
                 Spacer(minLength: R.S.sm)
 
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(booking.fee)
+                    Text(row.feeFormatted)
                         .font(R.F.mono(10.5, weight: .semibold))
                         .tracking(0.4)
                         .foregroundStyle(R.C.fg1)
-                    StatusTag(statusTag(for: booking.status))
+                    StatusTag(statusTag(for: row.status))
                 }
             }
             .padding(R.S.md)
@@ -310,11 +406,27 @@ private struct UpNextRow: View {
         .buttonStyle(.plain)
     }
 
-    private func statusTag(for s: MockBooking.Status) -> StatusTag.Status {
-        switch s {
-        case .confirmed:  return .confirmed
-        case .pending:    return .pending
-        case .contracted: return .contracted
+    /// "TUE 24" — day-of-week + day-of-month in mono caps.
+    private var dayLabel: String {
+        let f = DateFormatter()
+        f.dateFormat = "EEE d"
+        return f.string(from: row.eventDate).uppercased()
+    }
+
+    /// "23:00" when we have an event_time, otherwise the calendar time.
+    private var timeLabel: String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: row.eventDate)
+    }
+
+    private func statusTag(for raw: String) -> StatusTag.Status {
+        switch raw {
+        case "confirmed":  return .confirmed
+        case "contracted": return .contracted
+        case "completed":  return .completed
+        case "cancelled":  return .cancelled
+        default:           return .pending
         }
     }
 }
@@ -322,7 +434,39 @@ private struct UpNextRow: View {
 #if DEBUG
 #Preview("HomeView — promoter") {
     let nav = NavigationModel()
+    let auth = AuthStore()
+    let bookings = BookingsStore()
+    bookings._testLoad(
+        upcoming: [
+            BookingRow(
+                id: UUID(),
+                eventName: "Rooftop Set",
+                artistName: "DJ Novak",
+                venueName: "Sky Lounge Dubai",
+                eventDate: Date().addingTimeInterval(3 * 86_400),
+                status: "confirmed",
+                feeFormatted: "AED 28K",
+                currency: "AED",
+                fee: 28_000
+            ),
+            BookingRow(
+                id: UUID(),
+                eventName: "Beach Festival",
+                artistName: "Orion Kai",
+                venueName: "Atlantis Beach",
+                eventDate: Date().addingTimeInterval(7 * 86_400),
+                status: "pending",
+                feeFormatted: "AED 22K",
+                currency: "AED",
+                fee: 22_000
+            )
+        ],
+        past: []
+    )
     return HomeView(nav: nav)
+        .environment(nav)
+        .environment(auth)
+        .environment(bookings)
         .preferredColorScheme(.dark)
 }
 #endif

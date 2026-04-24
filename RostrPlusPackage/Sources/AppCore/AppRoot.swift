@@ -15,6 +15,7 @@ public struct AppRoot: View {
     @State private var nav = NavigationModel()
     @State private var auth = AuthStore()
     @State private var roster = RosterStore()
+    @State private var bookings = BookingsStore()
 
     public init() {}
 
@@ -27,21 +28,22 @@ public struct AppRoot: View {
             case .signedOut:
                 UnauthenticatedShell(nav: nav)
 
-            case .signedIn(_, _, let role):
+            case .signedIn(let userID, _, let role):
                 AuthenticatedShell(nav: nav)
                     .onAppear {
                         // Keep NavigationModel.role in sync with the
                         // server-side role after every fresh sign-in.
-                        // Users can still flip the role switch on Home;
-                        // this just sets the correct default.
                         let svcRole: Role = role == "artist" ? .artist : .promoter
                         if nav.role != svcRole { nav.setRole(svcRole) }
+                        // Prefetch bookings for the signed-in user.
+                        bookings.refresh(for: userID, role: svcRole)
                     }
             }
         }
         .environment(nav)
         .environment(auth)
         .environment(roster)
+        .environment(bookings)
         .background(R.C.bg0.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .task {
