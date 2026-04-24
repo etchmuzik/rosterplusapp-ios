@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- App Store distribution via TestFlight. -->
+    <key>method</key>
+    <string>app-store</string>
+
+    <!-- Automatic signing — relies on the Xcode-managed certificates
+         + provisioning profiles already installed in Keychain. -->
+    <key>signingStyle</key>
+    <string>automatic</string>
+
+    <!-- Let the uploader strip any bitcode (Apple no longer accepts it). -->
+    <key>stripSwiftSymbols</key>
+    <true/>
+
+    <!-- Upload IPSYM files so crash reports symbolicate. -->
+    <key>uploadSymbols</key>
+    <true/>
+
+    <!-- Include bitcode is deprecated — explicitly off. -->
+    <key>compileBitcode</key>
+    <false/>
+</dict>
+</plist>

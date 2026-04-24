@@ -9,6 +9,10 @@ build/
 *.xcuserdatad/
 Package.resolved
 
+# XcodeGen-generated project. Regenerate with scripts/bootstrap.sh.
+# project.yml is the source of truth.
+RostrPlus.xcodeproj
+
 # macOS
 .DS_Store
 
