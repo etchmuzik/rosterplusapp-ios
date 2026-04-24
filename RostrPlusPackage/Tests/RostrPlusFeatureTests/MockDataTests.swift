@@ -47,4 +47,27 @@ struct MockDataTests {
         let actives = MockData.bookingTimeline.filter(\.isActive)
         #expect(actives.count == 1, "Timeline should highlight one current step")
     }
+
+    @Test("Incoming artist requests have fees + dates populated")
+    func incomingShape() {
+        #expect(!MockData.incomingRequests.isEmpty)
+        for r in MockData.incomingRequests {
+            #expect(!r.fee.isEmpty)
+            #expect(!r.date.isEmpty)
+        }
+    }
+
+    @Test("Past performances cover multiple cities")
+    func pastPerfCities() {
+        let cities = Set(MockData.pastPerformances.map(\.city))
+        #expect(cities.count >= 2, "EPK should demonstrate multi-city touring")
+    }
+
+    @Test("Press quotes are non-empty + attributed")
+    func pressQuotesShape() {
+        for q in MockData.pressQuotes {
+            #expect(!q.quote.isEmpty)
+            #expect(!q.outlet.isEmpty)
+        }
+    }
 }

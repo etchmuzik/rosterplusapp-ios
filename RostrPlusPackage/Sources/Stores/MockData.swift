@@ -67,6 +67,29 @@ public struct MockTimelineEvent: Identifiable, Hashable, Sendable {
     public let isActive: Bool
 }
 
+public struct MockIncomingRequest: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let who: String         // Promoter / venue name
+    public let date: String        // "SAT 27 APR"
+    public let venue: String
+    public let fee: String
+    public let time: String        // "2h ago"
+}
+
+public struct MockPastPerformance: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let venue: String
+    public let city: String
+    public let date: String
+    public let crowd: String       // "1,400 people"
+}
+
+public struct MockPressQuote: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let outlet: String
+    public let quote: String
+}
+
 public enum MockData {
     public static let artists: [MockArtist] = [
         .init(id: 1, stage: "DJ NOVAK",  genre: "Tech House",     city: "Dubai",     rating: 4.9, avail: .avail,  featured: false),
@@ -109,6 +132,24 @@ public enum MockData {
         .init(id: "m3", from: "DJ NOVAK", body: "Can we push to 21:00 instead of 20:00? Flight lands at 18:40.",   time: "11:05", isMine: false),
         .init(id: "m4", from: "me",       body: "Works for us. I'll loop the venue.",                              time: "11:08", isMine: true),
         .init(id: "m5", from: "DJ NOVAK", body: "Thanks — sending updated rider after lunch.",                     time: "11:09", isMine: false)
+    ]
+
+    public static let incomingRequests: [MockIncomingRequest] = [
+        .init(id: "r1", who: "Soho Garden",      date: "SAT 27 APR", venue: "WHITE Dubai",  fee: "AED 28K", time: "2h ago"),
+        .init(id: "r2", who: "Cavalli Club",     date: "FRI 03 MAY", venue: "Cavalli Club", fee: "AED 32K", time: "5h ago"),
+        .init(id: "r3", who: "Riyadh Nights Co", date: "SAT 11 MAY", venue: "Blu Dahlia",   fee: "SAR 42K", time: "Yesterday")
+    ]
+
+    public static let pastPerformances: [MockPastPerformance] = [
+        .init(id: "pp1", venue: "WHITE Dubai",   city: "Dubai",    date: "12 Apr", crowd: "1,400 people"),
+        .init(id: "pp2", venue: "Blu Dahlia",    city: "Riyadh",   date: "28 Mar", crowd: "800 people"),
+        .init(id: "pp3", venue: "Cavalli Club",  city: "Dubai",    date: "21 Mar", crowd: "1,200 people"),
+        .init(id: "pp4", venue: "Soho Garden",   city: "Dubai",    date: "14 Mar", crowd: "2,000 people")
+    ]
+
+    public static let pressQuotes: [MockPressQuote] = [
+        .init(id: "pq1", outlet: "MixMag ME",     quote: "A controlled burn of a set — leaves the room breathing heavy."),
+        .init(id: "pq2", outlet: "Time Out Dubai", quote: "The house selector you didn't know you needed.")
     ]
 
     public static let bookingTimeline: [MockTimelineEvent] = [

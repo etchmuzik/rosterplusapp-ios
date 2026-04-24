@@ -26,6 +26,7 @@ public enum Route: Hashable, Identifiable {
     case invoice(bookingID: String)
     case signIn
     case onboard
+    case calendar
 
     public var id: String {
         switch self {
@@ -43,6 +44,7 @@ public enum Route: Hashable, Identifiable {
         case .invoice(let id):        return "invoice:\(id)"
         case .signIn:                 return "signIn"
         case .onboard:                return "onboard"
+        case .calendar:               return "calendar"
         }
     }
 }

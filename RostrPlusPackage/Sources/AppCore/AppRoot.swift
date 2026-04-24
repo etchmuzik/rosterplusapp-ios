@@ -58,10 +58,7 @@ private struct TabRootRouter: View {
         switch nav.tab {
         case .home:
             if nav.role == .artist {
-                PlaceholderScreen(
-                    title: "Artist dashboard",
-                    note: "Lands in Wave 3 (artist-side flows)."
-                )
+                ArtistDashboardView(nav: nav)
             } else {
                 HomeView(nav: nav)
             }
@@ -109,13 +106,22 @@ private struct DetailRouter: View {
             case .invoice(let id):
                 InvoiceView(nav: nav, bookingID: id)
 
-            // Later-wave routes render a friendly stub for now.
+            case .availability:
+                AvailabilityView(nav: nav)
+
+            case .profileEdit:
+                ProfileEditView(nav: nav)
+
+            case .epk(let id):
+                EPKView(nav: nav, artistID: id)
+
+            case .calendar:
+                CalendarView(nav: nav)
+
+            // Wave 4 + 5 targets still render a friendly stub.
             case .notifications:  stub("Notifications",  "Wave 4 — activity feed with 7 types.")
             case .review:         stub("Leave a review", "Wave 4 — mutual 3-day review flow.")
             case .claim:          stub("Claim profile",  "Wave 4.")
-            case .availability:   stub("Availability",   "Wave 3 — tappable 7-col calendar.")
-            case .profileEdit:    stub("Edit profile",   "Wave 3.")
-            case .epk:            stub("EPK",            "Wave 3 — shareable press kit.")
             case .signIn:         stub("Sign in",        "Wave 5 — Apple + Google OAuth.")
             case .onboard:        stub("Welcome",        "Wave 5 — first-launch carousel.")
             }
