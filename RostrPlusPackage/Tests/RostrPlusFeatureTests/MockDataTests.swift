@@ -70,4 +70,36 @@ struct MockDataTests {
             #expect(!q.outlet.isEmpty)
         }
     }
+
+    @Test("Notifications cover all 7 kinds per README spec")
+    func notificationKinds() {
+        let kinds = Set(MockData.notifications.map(\.kind))
+        let expected: Set<MockNotification.Kind> = [.booking, .message, .payment, .contract, .review, .calendar, .profile]
+        #expect(kinds == expected, "Design system requires all 7 kinds to be represented")
+    }
+
+    @Test("Notifications have unread + read mix for section split")
+    func notificationsReadMix() {
+        let unread = MockData.notifications.filter(\.unread)
+        let read = MockData.notifications.filter { !$0.unread }
+        #expect(!unread.isEmpty)
+        #expect(!read.isEmpty)
+    }
+
+    @Test("Analytics months cover a full year (12) in order")
+    func analyticsMonths() {
+        #expect(MockData.analyticsMonths.count == 12)
+    }
+
+    @Test("Genre shares sum to ~1.0")
+    func genreShares() {
+        let sum = MockData.genreShares.map(\.share).reduce(0, +)
+        #expect(abs(sum - 1.0) < 0.001, "Genre breakdown should be exhaustive; got \(sum)")
+    }
+
+    @Test("Top artists ranked by booking count (descending)")
+    func topArtistsSorted() {
+        let counts = MockData.topArtists.map(\.bookings)
+        #expect(counts == counts.sorted(by: >), "Top-artists list should be pre-sorted desc")
+    }
 }

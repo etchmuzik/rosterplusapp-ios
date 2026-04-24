@@ -90,6 +90,38 @@ public struct MockPressQuote: Identifiable, Hashable, Sendable {
     public let quote: String
 }
 
+public struct MockNotification: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let kind: Kind
+    public let title: String
+    public let body: String
+    public let when: String     // "2m ago", "Yesterday"
+    public let unread: Bool
+
+    public enum Kind: String, Sendable {
+        case booking, message, payment, contract, review, calendar, profile
+    }
+}
+
+public struct MockAnalyticsMonth: Identifiable, Hashable, Sendable {
+    public var id: String { label }
+    public let label: String    // "May", "Jun", ...
+    public let value: Double    // AED in thousands
+}
+
+public struct MockGenreShare: Identifiable, Hashable, Sendable {
+    public var id: String { label }
+    public let label: String
+    public let share: Double    // 0...1
+}
+
+public struct MockTopArtist: Identifiable, Hashable, Sendable {
+    public var id: String { stage }
+    public let stage: String
+    public let bookings: Int
+    public let totalFee: String
+}
+
 public enum MockData {
     public static let artists: [MockArtist] = [
         .init(id: 1, stage: "DJ NOVAK",  genre: "Tech House",     city: "Dubai",     rating: 4.9, avail: .avail,  featured: false),
@@ -150,6 +182,40 @@ public enum MockData {
     public static let pressQuotes: [MockPressQuote] = [
         .init(id: "pq1", outlet: "MixMag ME",     quote: "A controlled burn of a set — leaves the room breathing heavy."),
         .init(id: "pq2", outlet: "Time Out Dubai", quote: "The house selector you didn't know you needed.")
+    ]
+
+    public static let notifications: [MockNotification] = [
+        .init(id: "n1", kind: .booking,  title: "DJ NOVAK accepted",             body: "Your request for WHITE Dubai · TUE 24 was accepted.",      when: "2m ago",     unread: true),
+        .init(id: "n2", kind: .message,  title: "MIRELA sent a message",         body: "Sending the updated set list by EOD.",                     when: "14m ago",    unread: true),
+        .init(id: "n3", kind: .contract, title: "Contract countersigned",        body: "KARIMA-N signed the Cavalli Club agreement.",              when: "1h ago",     unread: false),
+        .init(id: "n4", kind: .payment,  title: "Payment scheduled",             body: "AED 32K scheduled for 28 Apr.",                             when: "3h ago",     unread: false),
+        .init(id: "n5", kind: .review,   title: "Rate KARIMA-N",                 body: "Booking wrapped SAT 20. Leave a rating.",                   when: "Yesterday",  unread: false),
+        .init(id: "n6", kind: .calendar, title: "Upcoming: 3 gigs this week",    body: "Your calendar fills up fast — check availability.",         when: "Yesterday",  unread: false),
+        .init(id: "n7", kind: .profile,  title: "Your profile got 12 views",     body: "Four from Riyadh, eight from Dubai.",                       when: "2d ago",     unread: false)
+    ]
+
+    public static let analyticsMonths: [MockAnalyticsMonth] = [
+        .init(label: "May", value: 42),  .init(label: "Jun", value: 58),
+        .init(label: "Jul", value: 96),  .init(label: "Aug", value: 34),
+        .init(label: "Sep", value: 68),  .init(label: "Oct", value: 112),
+        .init(label: "Nov", value: 84),  .init(label: "Dec", value: 146),
+        .init(label: "Jan", value: 92),  .init(label: "Feb", value: 128),
+        .init(label: "Mar", value: 172), .init(label: "Apr", value: 186)
+    ]
+
+    public static let genreShares: [MockGenreShare] = [
+        .init(label: "Tech House",      share: 0.38),
+        .init(label: "Afro House",      share: 0.21),
+        .init(label: "Melodic Techno",  share: 0.18),
+        .init(label: "Deep House",      share: 0.12),
+        .init(label: "Other",           share: 0.11)
+    ]
+
+    public static let topArtists: [MockTopArtist] = [
+        .init(stage: "DJ NOVAK",  bookings: 8, totalFee: "AED 224K"),
+        .init(stage: "KARIMA-N",  bookings: 6, totalFee: "AED 192K"),
+        .init(stage: "ORION KAI", bookings: 5, totalFee: "SAR 210K"),
+        .init(stage: "MIRELA",    bookings: 4, totalFee: "AED 96K")
     ]
 
     public static let bookingTimeline: [MockTimelineEvent] = [

@@ -69,10 +69,7 @@ private struct TabRootRouter: View {
         case .inbox:
             InboxView(nav: nav)
         case .me:
-            PlaceholderScreen(
-                title: "Me / Settings",
-                note: "Wave 4."
-            )
+            SettingsView(nav: nav)
         }
     }
 }
@@ -118,46 +115,25 @@ private struct DetailRouter: View {
             case .calendar:
                 CalendarView(nav: nav)
 
-            // Wave 4 + 5 targets still render a friendly stub.
-            case .notifications:  stub("Notifications",  "Wave 4 — activity feed with 7 types.")
-            case .review:         stub("Leave a review", "Wave 4 — mutual 3-day review flow.")
-            case .claim:          stub("Claim profile",  "Wave 4.")
-            case .signIn:         stub("Sign in",        "Wave 5 — Apple + Google OAuth.")
-            case .onboard:        stub("Welcome",        "Wave 5 — first-launch carousel.")
+            case .analytics:
+                AnalyticsView(nav: nav)
+
+            case .notifications:
+                NotificationsView(nav: nav)
+
+            case .review(let id):
+                ReviewView(nav: nav, bookingID: id)
+
+            case .claim:
+                ClaimView(nav: nav)
+
+            case .signIn:
+                SignInView(nav: nav)
+
+            case .onboard:
+                OnboardView(nav: nav)
             }
         }
-        .background(R.C.bg0)
-    }
-
-    private func stub(_ title: String, _ note: String) -> some View {
-        VStack(spacing: 0) {
-            NavHeader(title: title, onBack: { nav.pop() })
-            PlaceholderScreen(title: title, note: note)
-        }
-    }
-}
-
-// MARK: - Placeholder
-
-private struct PlaceholderScreen: View {
-    let title: String
-    let note: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: R.S.sm) {
-            Spacer()
-            Text(title)
-                .font(R.F.display(26, weight: .bold))
-                .tracking(-0.6)
-                .foregroundStyle(R.C.fg1)
-            Text(note)
-                .font(R.F.body(13, weight: .regular))
-                .foregroundStyle(R.C.fg2)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(R.S.xl)
-        .padding(.horizontal, R.S.lg)
         .background(R.C.bg0)
     }
 }

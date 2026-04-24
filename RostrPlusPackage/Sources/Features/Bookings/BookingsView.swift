@@ -51,11 +51,7 @@ public struct BookingsView: View {
             }
             Spacer()
             Button {
-                // Analytics lands in Wave 4 as a distinct surface. In
-                // the JSX prototype it's a separate tab set via
-                // setTab('analytics'); here we'll route it through a
-                // dedicated push when the screen lands. For now, no-op.
-                // TODO(Wave-4): nav.push(.analytics)
+                nav.push(.analytics)
             } label: {
                 ChartIcon(size: 18, color: R.C.fg1)
                     .frame(width: 36, height: 36)

@@ -27,6 +27,7 @@ public enum Route: Hashable, Identifiable {
     case signIn
     case onboard
     case calendar
+    case analytics
 
     public var id: String {
         switch self {
@@ -45,6 +46,7 @@ public enum Route: Hashable, Identifiable {
         case .signIn:                 return "signIn"
         case .onboard:                return "onboard"
         case .calendar:               return "calendar"
+        case .analytics:              return "analytics"
         }
     }
 }

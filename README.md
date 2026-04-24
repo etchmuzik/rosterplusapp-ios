@@ -6,21 +6,21 @@ Companion to the web repo at [etchmuzik/rosterplusapp](https://github.com/etchmu
 
 ## Status
 
-**Wave 1 (foundation)** — in progress.
+**All 23 screens shipped.** The design handoff is fully realised in SwiftUI.
 
-- [x] Workspace + SPM package scaffolding
-- [x] Design system (colors, typography, spacing, radii, motion, glass)
-- [x] Component primitives (Cover, AvailPill, StatusTag, icons, TabBar)
-- [x] NavigationModel (port of the InteractiveDevice nav from the handoff)
-- [x] HomeScreen (promoter) — one screen end-to-end to validate the foundation
-- [x] Supabase client wired to the same project as web
-- [x] Tests for the design system + navigation
-- [ ] Wave 2 — core promoter loop (Roster, Artist, Booking wizard, Bookings, Contract, Inbox, Payments)
-- [ ] Wave 3 — artist side (Dashboard, Availability, Edit Profile, EPK, Calendar)
-- [ ] Wave 4 — surrounding flows (Notifications, Review, Analytics, Claim, Settings)
-- [ ] Wave 5 — auth (Onboarding, Sign in)
+- [x] Wave 1 — foundation (design system + Home)
+- [x] Wave 2 — promoter core loop (Roster, Artist, Booking, Bookings, Contract, Inbox, Thread, Payments, BookingDetail, Invoice)
+- [x] Wave 3 — artist side (ArtistDashboard, Availability, ProfileEdit, EPK, Calendar)
+- [x] Wave 4 — surrounding flows (Notifications, Review, Analytics, Claim, Settings)
+- [x] Wave 5 — auth (Onboarding, SignIn)
 
-All 23 screens from the design handoff will ship across these waves.
+### What's left before TestFlight
+
+- [ ] Apple Developer team ID + provisioning profiles (you supply)
+- [ ] Real Supabase session wiring in `AuthStore.loadSession()` and `Auth.signIn(with:)`
+- [ ] Replace `MockData` with live DTO fetches as each screen's backend RPC comes online
+- [ ] Xcode project file — currently the SPM package drives previews; a `.xcodeproj` needs to be generated from `Config/Shared.xcconfig` to produce an archivable binary
+- [ ] Font files dropped into `Sources/DesignSystem/Fonts/` (see that folder's README)
 
 ## Stack
 

@@ -25,6 +25,8 @@ struct RouteTests {
         #expect(Route.profileEdit.id == "profileEdit")
         #expect(Route.signIn.id == "signIn")
         #expect(Route.calendar.id == "calendar")
+        #expect(Route.analytics.id == "analytics")
+        #expect(Route.onboard.id == "onboard")
     }
 
     @Test("Two routes with different payloads are distinct")
