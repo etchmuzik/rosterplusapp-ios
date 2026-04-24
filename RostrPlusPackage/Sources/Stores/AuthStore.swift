@@ -129,6 +129,38 @@ public final class AuthStore {
         }
     }
 
+    // MARK: — Forgot password
+
+    /// Kick the send-password-reset edge function. The function always
+    /// returns 200 (on purpose — account-enumeration defence), so a
+    /// success here means "the email was dispatched IF the account
+    /// exists" rather than "the account exists".
+    ///
+    /// Views show a generic "check your email" confirmation on the
+    /// returning true regardless of the actual account state.
+    @discardableResult
+    public func forgotPassword(email: String) async -> Bool {
+        lastError = nil
+        let trimmed = email.trimmingCharacters(in: .whitespaces)
+        guard trimmed.contains("@") else {
+            lastError = "Enter a valid email address."
+            return false
+        }
+        do {
+            let payload: [String: AnyJSON] = [
+                "email": .string(trimmed.lowercased())
+            ]
+            try await client.functions.invoke(
+                "send-password-reset",
+                options: FunctionInvokeOptions(body: payload)
+            )
+            return true
+        } catch {
+            lastError = humanize(error)
+            return false
+        }
+    }
+
     // MARK: — Apple
 
     /// Finish an Apple Sign In flow. Hand in the `ASAuthorizationAppleIDCredential`

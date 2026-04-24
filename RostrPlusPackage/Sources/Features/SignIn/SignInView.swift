@@ -29,6 +29,8 @@ public struct SignInView: View {
     @State private var showingEmail: Bool = false
     @State private var isSubmitting: Bool = false
     @State private var appleNonce: String = AppleNonceHelper.random()
+    @State private var isSendingReset: Bool = false
+    @State private var resetSentMessage: String?
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -177,16 +179,33 @@ public struct SignInView: View {
                     Task { await submitEmail() }
                 }
                 Button {
-                    // TODO(forgot-password): call the send-password-reset
-                    // edge function and present a "check your email" toast.
-                    // The function is already deployed + working for web.
+                    Task { await sendPasswordReset() }
                 } label: {
-                    Text("Forgot password?")
-                        .monoLabel(size: 10, tracking: 0.4, color: R.C.fg2)
+                    if isSendingReset {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(R.C.fg2)
+                            .frame(height: 14)
+                    } else {
+                        Text("Forgot password?")
+                            .monoLabel(size: 10, tracking: 0.4, color: R.C.fg2)
+                    }
                 }
                 .buttonStyle(.plain)
+                .disabled(isSendingReset || !email.contains("@"))
                 .frame(maxWidth: .infinity)
                 .padding(.top, 4)
+                .accessibilityLabel("Send password reset email")
+
+                if let resetSentMessage {
+                    Text(resetSentMessage)
+                        .font(R.F.body(11, weight: .regular))
+                        .foregroundStyle(R.C.green)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 2)
+                        .transition(.opacity)
+                }
             }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
         } else {
@@ -302,6 +321,30 @@ public struct SignInView: View {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             #endif
             // AppRoot is watching AuthStore.state and will route to tabs.
+        } else {
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            #endif
+        }
+    }
+
+    /// Call the send-password-reset edge function. The server always
+    /// returns 200 (defence against account enumeration) so a successful
+    /// response just means "if the account exists, the email went out."
+    /// We show a generic confirmation either way.
+    private func sendPasswordReset() async {
+        guard email.contains("@"), !isSendingReset else { return }
+        isSendingReset = true
+        resetSentMessage = nil
+        defer { isSendingReset = false }
+        let ok = await auth.forgotPassword(email: email)
+        if ok {
+            withAnimation(R.M.easeOut) {
+                resetSentMessage = "Check \(email) for a reset link."
+            }
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            #endif
         } else {
             #if canImport(UIKit)
             UINotificationFeedbackGenerator().notificationOccurred(.error)
