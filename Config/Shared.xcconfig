@@ -29,3 +29,20 @@ DEVELOPMENT_TEAM =
 // ── Build ────────────────────────────────────────────────
 SWIFT_TREAT_WARNINGS_AS_ERRORS = YES
 ENABLE_USER_SCRIPT_SANDBOXING = YES
+
+// ── Info.plist keys (synthesised by Xcode) ──────────────
+// These land in the generated Info.plist. Xcode injects each
+// INFOPLIST_KEY_* as the matching plist entry, so we don't need
+// a hand-maintained plist file. Add new keys here.
+
+// Photo library — PhotosPicker in ProfileEditView (avatar + gallery).
+INFOPLIST_KEY_NSPhotoLibraryUsageDescription = ROSTR+ needs photo access to upload your avatar and gallery images.
+INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = ROSTR+ needs permission to save booking receipts to your photo library.
+
+// Camera — not yet used, but ProfileEditView's Change-photo flow
+// will reach for it once the native camera sheet lands.
+INFOPLIST_KEY_NSCameraUsageDescription = ROSTR+ uses the camera to capture artist profile photos.
+
+// Push — lets UIApplication deliver silent + alert notifications in
+// the background. Paired with aps-environment in the entitlements.
+INFOPLIST_KEY_UIBackgroundModes = remote-notification
