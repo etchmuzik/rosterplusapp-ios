@@ -1,9 +1,8 @@
 // ArtistView.swift — Screen 04
 //
 // Public artist profile. Port of `ArtistScreen` at ios-app.jsx line 396.
-// Wave 5.1: reads live data from ArtistDetailStore (keyed by artist id).
-// The prior MockArtist-based API survives behind a nil-safe fallback so
-// previews + deep links keep working while the detail cache warms up.
+// Reads live data from ArtistDetailStore (keyed by artist id). Shows
+// a loading placeholder until the detail cache warms up.
 
 import SwiftUI
 import DesignSystem
@@ -16,15 +15,6 @@ public struct ArtistView: View {
     public init(nav: NavigationModel, artistID: UUID) {
         self.nav = nav
         self.artistID = artistID
-    }
-
-    /// Legacy initializer — accepts the old MockArtist shape for existing
-    /// call sites that haven't migrated. Preserves the preview + router
-    /// compatibility layer until every caller passes a UUID directly.
-    public init(nav: NavigationModel, artist: MockArtist) {
-        self.nav = nav
-        self.artistID = UUID()
-        _ = artist // Placeholder — live fetch drives the view.
     }
 
     private var loaded: ArtistDetail? { store.cache[artistID] }

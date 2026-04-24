@@ -177,8 +177,9 @@ public struct SignInView: View {
                     Task { await submitEmail() }
                 }
                 Button {
-                    // Wave 5.1: forgot-password flow (hits the
-                    // send-password-reset edge function on the web).
+                    // TODO(forgot-password): call the send-password-reset
+                    // edge function and present a "check your email" toast.
+                    // The function is already deployed + working for web.
                 } label: {
                     Text("Forgot password?")
                         .monoLabel(size: 10, tracking: 0.4, color: R.C.fg2)

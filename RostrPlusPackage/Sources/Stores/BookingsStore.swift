@@ -26,8 +26,9 @@ public struct BookingRow: Identifiable, Hashable, Sendable {
     public let currency: String
     public let fee: Double?
 
-    /// Status mapping to the view enum. Keeps MockBooking.Status's
-    /// three-case simplicity while the DTO supports the full five.
+    /// Raw server status string. Views map this to their local enum
+    /// via a `statusTag(for:)` helper — kept as text so the store
+    /// doesn't depend on any particular view's enum case set.
     public var displayStatus: String { status }
 }
 

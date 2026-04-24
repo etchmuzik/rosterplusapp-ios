@@ -12,8 +12,9 @@ import Observation
 import Supabase
 
 /// Local, display-friendly shape. DTOs live in SupabaseClient/DTO/.
-/// This struct is what RosterView renders; MockArtist is the legacy
-/// preview-only shape the view falls back to before the store loads.
+/// This struct is what RosterView renders — everything on the live
+/// surface consumes this type; `MockArtist` in MockData.swift is
+/// retained purely for previews + legacy test fixtures.
 public struct RosterArtist: Identifiable, Hashable, Sendable {
     public let id: UUID
     public let stage: String
