@@ -28,4 +28,10 @@ public struct ArtistDTO: Codable, Hashable, Sendable, Identifiable {
         case verified
         case status
     }
+
+    /// Comma-separated column list for PostgREST .select(). Kept here so
+    /// any store fetching artists pulls the same fields and DTOs stay in
+    /// lockstep.
+    public static let selectFields =
+        "id,stage_name,genre,cities_active,base_fee,currency,rating,verified,status"
 }

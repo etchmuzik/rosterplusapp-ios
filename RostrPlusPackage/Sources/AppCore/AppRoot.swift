@@ -1,45 +1,118 @@
 // AppRoot.swift
 //
-// Top-level view. Picks the tab-root screen, then overlays any detail
-// route from nav.stack on top. Mirrors the big switch at the bottom of
-// InteractiveDevice in ios-app.jsx.
+// Top-level view + boot gate. Decides whether to show:
+//   1. A loading shell while AuthStore checks for a cached session
+//   2. Onboarding (first launch only) + SignIn (no session)
+//   3. The tab surface (signed in)
 //
-// Wave 2 wires the promoter core loop — Home, Roster, Bookings, Inbox
-// + all their detail screens. Screens not yet implemented fall back
-// to a placeholder that renders in the same glass treatment so visual
-// parity stays intact.
+// AuthStore drives the three-way state machine; NavigationModel handles
+// tab + push-stack routing inside the authenticated shell.
 
 import SwiftUI
 import DesignSystem
 
 public struct AppRoot: View {
     @State private var nav = NavigationModel()
+    @State private var auth = AuthStore()
+    @State private var roster = RosterStore()
 
     public init() {}
 
     public var body: some View {
+        Group {
+            switch auth.state {
+            case .unknown:
+                LoadingShell()
+
+            case .signedOut:
+                UnauthenticatedShell(nav: nav)
+
+            case .signedIn(_, _, let role):
+                AuthenticatedShell(nav: nav)
+                    .onAppear {
+                        // Keep NavigationModel.role in sync with the
+                        // server-side role after every fresh sign-in.
+                        // Users can still flip the role switch on Home;
+                        // this just sets the correct default.
+                        let svcRole: Role = role == "artist" ? .artist : .promoter
+                        if nav.role != svcRole { nav.setRole(svcRole) }
+                    }
+            }
+        }
+        .environment(nav)
+        .environment(auth)
+        .environment(roster)
+        .background(R.C.bg0.ignoresSafeArea())
+        .preferredColorScheme(.dark)
+        .task {
+            await auth.loadSession()
+            await auth.startObserving()
+        }
+    }
+}
+
+// MARK: - Loading
+
+private struct LoadingShell: View {
+    var body: some View {
+        VStack(spacing: R.S.md) {
+            Text("ROSTR+")
+                .font(R.F.display(24, weight: .bold))
+                .tracking(-0.6)
+                .foregroundStyle(R.C.fg1)
+            ProgressView()
+                .progressViewStyle(.circular)
+                .tint(R.C.fg1)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(R.C.bg0)
+    }
+}
+
+// MARK: - Unauthenticated shell
+
+private struct UnauthenticatedShell: View {
+    @Bindable var nav: NavigationModel
+
+    private var onboardCompleted: Bool {
+        UserDefaults.standard.bool(forKey: kOnboardCompletedKey)
+    }
+
+    var body: some View {
+        if !onboardCompleted {
+            OnboardView(nav: nav)
+        } else {
+            SignInView(nav: nav)
+        }
+    }
+}
+
+// MARK: - Authenticated shell
+
+private struct AuthenticatedShell: View {
+    @Bindable var nav: NavigationModel
+    @Environment(RosterStore.self) private var roster
+
+    var body: some View {
         ZStack(alignment: .bottom) {
-            rootScreen
+            routeContent
                 .ignoresSafeArea(edges: .bottom)
             TabBar(active: Binding(
                 get: { nav.tab },
                 set: { nav.setTab($0) }
             ))
             .padding(.bottom, R.S.xxl)
-            // Hide the tab bar when a detail route is pushed so it
-            // doesn't cover the sticky action bar on detail screens.
             .opacity(nav.top == nil ? 1 : 0)
             .allowsHitTesting(nav.top == nil)
         }
-        .environment(nav)
-        .background(R.C.bg0.ignoresSafeArea())
-        .preferredColorScheme(.dark)
+        .task {
+            // Prefetch the live roster so the Roster tab feels instant.
+            roster.refresh()
+        }
     }
 
-    // MARK: - Routing
-
     @ViewBuilder
-    private var rootScreen: some View {
+    private var routeContent: some View {
         if let top = nav.top {
             DetailRouter(route: top, nav: nav)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -84,7 +157,6 @@ private struct DetailRouter: View {
         Group {
             switch route {
             case .artist(let id):
-                // Look up the mock artist; fall back to the first if not found.
                 let artist = MockData.artists.first { String($0.id) == id } ?? MockData.artists[0]
                 ArtistView(nav: nav, artist: artist)
 

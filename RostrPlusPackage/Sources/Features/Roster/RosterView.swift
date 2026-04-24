@@ -1,43 +1,44 @@
 // RosterView.swift — Screen 03
 //
 // Browse artists with search + genre filter chips. Mirrors `RosterScreen`
-// at ios-app.jsx line 306. Layout:
+// at ios-app.jsx line 306.
 //
-//   1. Search field
-//   2. Horizontal scroll of filter chips (All · Tech House · Deep · …)
-//   3. 2-column card grid — each card: Cover, stage name, genre · city,
-//      rating row, availability pill
-//
-// Tapping a card pushes .artist(artistID:) onto the nav stack.
+// Track 2 update: backed by RosterStore. When the store hasn't loaded
+// yet (first launch) we show a skeleton list of glass cards. Failures
+// surface an inline retry banner. Mock data only seeds the preview.
 
 import SwiftUI
 import DesignSystem
 
 public struct RosterView: View {
     @Bindable var nav: NavigationModel
-    @State private var search: String = ""
-    @State private var genreFilter: String = "All"
+    @Environment(RosterStore.self) private var store
 
     public init(nav: NavigationModel) {
         self.nav = nav
     }
 
     public var body: some View {
+        @Bindable var store = store
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
-                searchField
+                searchField(store: $store)
                     .padding(.horizontal, R.S.lg)
                     .padding(.top, R.S.md)
-                filterChips
+                filterChips(store: $store)
                     .padding(.top, R.S.md)
-                grid
+                content
                     .padding(.horizontal, R.S.lg)
                     .padding(.top, R.S.lg)
                 Color.clear.frame(height: 100) // tab-bar clearance
             }
         }
+        .refreshable { store.refresh() }
         .background(R.C.bg0)
+        .onAppear {
+            if case .idle = store.state { store.refresh() }
+        }
     }
 
     // MARK: — Header
@@ -48,7 +49,7 @@ public struct RosterView: View {
                 .font(R.F.display(30, weight: .bold))
                 .tracking(-0.8)
                 .foregroundStyle(R.C.fg1)
-            Text("\(filtered.count) artists · live roster")
+            Text(headerSubtitle)
                 .monoLabel(size: 10, tracking: 0.6, color: R.C.fg3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -56,18 +57,30 @@ public struct RosterView: View {
         .padding(.top, R.S.sm)
     }
 
+    private var headerSubtitle: String {
+        switch store.state {
+        case .idle, .loading: return "Loading live roster…"
+        case .failed:         return "Couldn't load roster"
+        case .loaded:         return "\(store.visible.count) artists · live roster"
+        }
+    }
+
     // MARK: — Search
 
-    private var searchField: some View {
+    private func searchField(store: Binding<RosterStore>) -> some View {
         HStack(spacing: R.S.sm) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(R.C.fg3)
-            TextField("", text: $search, prompt: Text("Search artists").foregroundStyle(R.C.fg3))
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .foregroundStyle(R.C.fg1)
-                .font(R.F.body(14))
+            TextField(
+                "",
+                text: store.search,
+                prompt: Text("Search artists").foregroundStyle(R.C.fg3)
+            )
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .foregroundStyle(R.C.fg1)
+            .font(R.F.body(14))
         }
         .padding(.horizontal, R.S.md)
         .padding(.vertical, 11)
@@ -76,12 +89,12 @@ public struct RosterView: View {
 
     // MARK: — Filter chips
 
-    private var filterChips: some View {
+    private func filterChips(store: Binding<RosterStore>) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: R.S.xs) {
-                ForEach(genres, id: \.self) { g in
-                    Chip(label: g, isActive: genreFilter == g) {
-                        genreFilter = g
+                ForEach(store.wrappedValue.genres, id: \.self) { g in
+                    Chip(label: g, isActive: store.wrappedValue.genreFilter == g) {
+                        store.wrappedValue.genreFilter = g
                     }
                 }
             }
@@ -89,35 +102,33 @@ public struct RosterView: View {
         }
     }
 
-    private var genres: [String] {
-        ["All"] + Array(Set(MockData.artists.map(\.genre))).sorted()
-    }
+    // MARK: — Content
 
-    // MARK: — Grid
+    @ViewBuilder
+    private var content: some View {
+        switch store.state {
+        case .idle, .loading:
+            SkeletonGrid()
+        case .failed(let message):
+            FailureCard(message: message) { store.refresh() }
+        case .loaded:
+            grid
+        }
+    }
 
     private var grid: some View {
         LazyVGrid(columns: [
             GridItem(.flexible(), spacing: R.S.sm),
             GridItem(.flexible(), spacing: R.S.sm)
         ], spacing: R.S.sm) {
-            ForEach(filtered) { artist in
+            ForEach(store.visible) { artist in
                 Button {
-                    nav.push(.artist(artistID: String(artist.id)))
+                    nav.push(.artist(artistID: artist.id.uuidString))
                 } label: {
                     ArtistCard(artist: artist)
                 }
                 .buttonStyle(.plain)
             }
-        }
-    }
-
-    private var filtered: [MockArtist] {
-        MockData.artists.filter { a in
-            (genreFilter == "All" || a.genre == genreFilter) &&
-            (search.isEmpty ||
-             a.stage.localizedCaseInsensitiveContains(search) ||
-             a.genre.localizedCaseInsensitiveContains(search) ||
-             a.city.localizedCaseInsensitiveContains(search))
         }
     }
 }
@@ -153,31 +164,26 @@ private struct Chip: View {
     }
 }
 
-// MARK: - Artist card
+// MARK: - Artist card (live)
 
 private struct ArtistCard: View {
-    let artist: MockArtist
+    let artist: RosterArtist
 
     var body: some View {
         VStack(alignment: .leading, spacing: R.S.xs) {
             Cover(seed: artist.stage, size: nil, cornerRadius: R.Rad.button2)
                 .frame(height: 140)
                 .overlay(alignment: .topTrailing) {
-                    if artist.featured {
-                        Text("Featured")
-                            .monoLabel(size: 8, tracking: 0.6, color: R.C.amber)
-                            .padding(.vertical, 3)
-                            .padding(.horizontal, 7)
+                    if artist.verified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(R.C.amber)
+                            .padding(6)
                             .background {
-                                RoundedRectangle(cornerRadius: R.Rad.xs, style: .continuous)
-                                    .fill(Color.black.opacity(0.4))
+                                Circle().fill(Color.black.opacity(0.4))
                             }
                             .padding(R.S.xs)
                     }
-                }
-                .overlay(alignment: .bottomLeading) {
-                    AvailPill(availFor(artist.avail))
-                        .padding(R.S.xs)
                 }
 
             Text(artist.stage)
@@ -193,7 +199,7 @@ private struct ArtistCard: View {
                 Image(systemName: "star.fill")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(R.C.amber)
-                Text(String(format: "%.1f", artist.rating))
+                Text(artist.rating > 0 ? String(format: "%.1f", artist.rating) : "—")
                     .font(R.F.mono(10, weight: .semibold))
                     .foregroundStyle(R.C.fg2)
             }
@@ -201,20 +207,73 @@ private struct ArtistCard: View {
         .padding(R.S.xs)
         .glassSurface(cornerRadius: R.Rad.card, intensity: .soft)
     }
+}
 
-    private func availFor(_ a: MockArtist.Avail) -> AvailPill.State {
-        switch a {
-        case .avail:  return .avail
-        case .busy:   return .busy
-        case .booked: return .booked
+// MARK: - Skeleton grid
+
+private struct SkeletonGrid: View {
+    var body: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: R.S.sm),
+            GridItem(.flexible(), spacing: R.S.sm)
+        ], spacing: R.S.sm) {
+            ForEach(0..<6, id: \.self) { _ in
+                VStack(alignment: .leading, spacing: R.S.xs) {
+                    RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                        .fill(R.C.glassLo)
+                        .frame(height: 140)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(R.C.glassLo)
+                        .frame(height: 14)
+                        .padding(.trailing, 40)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(R.C.glassLo)
+                        .frame(height: 10)
+                        .padding(.trailing, 80)
+                }
+                .padding(R.S.xs)
+                .glassSurface(cornerRadius: R.Rad.card, intensity: .soft)
+                .redacted(reason: .placeholder)
+            }
         }
+    }
+}
+
+// MARK: - Failure card
+
+private struct FailureCard: View {
+    let message: String
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: R.S.sm) {
+            HStack(spacing: R.S.sm) {
+                Image(systemName: "wifi.exclamationmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(R.C.red)
+                Text("Couldn't load the roster")
+                    .font(R.F.body(14, weight: .semibold))
+                    .foregroundStyle(R.C.fg1)
+            }
+            Text(message)
+                .font(R.F.body(12, weight: .regular))
+                .foregroundStyle(R.C.fg3)
+                .lineLimit(3)
+            PrimaryButton("Try again", variant: .ghost) {
+                retry()
+            }
+        }
+        .padding(R.S.md)
+        .glassSurface(cornerRadius: R.Rad.card)
     }
 }
 
 #if DEBUG
 #Preview("RosterView") {
     let nav = NavigationModel()
+    let store = RosterStore()
     return RosterView(nav: nav)
+        .environment(store)
         .preferredColorScheme(.dark)
 }
 #endif

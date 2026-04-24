@@ -23,6 +23,7 @@ import UIKit
 
 public struct SettingsView: View {
     @Bindable var nav: NavigationModel
+    @Environment(AuthStore.self) private var auth
 
     @State private var pushEnabled = true
     @State private var emailUpdates = true
@@ -31,6 +32,16 @@ public struct SettingsView: View {
 
     public init(nav: NavigationModel) {
         self.nav = nav
+    }
+
+    /// Derived email for the profile card. Falls back to the placeholder
+    /// only before AuthStore resolves — once signed in we show the real
+    /// address from the current session.
+    private var displayEmail: String {
+        if case .signedIn(_, let email, _) = auth.state, !email.isEmpty {
+            return email
+        }
+        return "hesham@beyondmngmt.ae"
     }
 
     public var body: some View {
@@ -74,7 +85,7 @@ public struct SettingsView: View {
                 Text("Hesham Saied")
                     .font(R.F.body(15, weight: .semibold))
                     .foregroundStyle(R.C.fg1)
-                Text("hesham@beyondmngmt.ae")
+                Text(displayEmail)
                     .font(R.F.mono(10.5, weight: .medium))
                     .tracking(0.3)
                     .foregroundStyle(R.C.fg3)
@@ -104,7 +115,7 @@ public struct SettingsView: View {
             SettingsRow(icon: "checkmark.seal", label: "Claim profile", trailing: .chevron) {
                 nav.push(.claim)
             }
-            SettingsRow(icon: "envelope", label: "Change email", value: "hesham@beyondmngmt.ae", trailing: .chevron) {
+            SettingsRow(icon: "envelope", label: "Change email", value: displayEmail, trailing: .chevron) {
                 // Placeholder
             }
             SettingsRow(icon: "lock", label: "Password", trailing: .chevron) {
@@ -167,7 +178,10 @@ public struct SettingsView: View {
             #if canImport(UIKit)
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
             #endif
-            nav.push(.signIn)
+            // AuthStore flips to .signedOut which makes AppRoot swap
+            // in the UnauthenticatedShell automatically. No manual
+            // nav.push(.signIn) needed — the boot gate handles it.
+            Task { await auth.signOut() }
         }
     }
 }
@@ -269,7 +283,9 @@ private struct ToggleRow: View {
 #if DEBUG
 #Preview("SettingsView") {
     let nav = NavigationModel()
+    let auth = AuthStore()
     return SettingsView(nav: nav)
+        .environment(auth)
         .preferredColorScheme(.dark)
 }
 #endif

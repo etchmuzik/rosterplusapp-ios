@@ -17,14 +17,19 @@ import DesignSystem
 import UIKit
 #endif
 
+/// UserDefaults key — set the moment the user finishes the onboarding
+/// carousel. AppRoot reads it on launch to decide whether to show
+/// OnboardView or jump straight to SignIn / the tab surface.
+public let kOnboardCompletedKey = "rostr.onboardCompleted"
+
 public struct OnboardView: View {
     @Bindable var nav: NavigationModel
     @State private var page: Int = 0
     @State private var chosenRole: Role = .promoter
 
-    /// Fired when onboarding is complete — set from the parent if it
-    /// wants to persist a UserDefaults flag + route into SignIn. The
-    /// default behaviour here just pushes .signIn.
+    /// Fired when the carousel completes. Default: persist the
+    /// completion flag, set the role on the navigation model, and
+    /// push .signIn. Callers can pass a custom closure (e.g. for tests).
     var onComplete: ((Role) -> Void)?
 
     public init(nav: NavigationModel, onComplete: ((Role) -> Void)? = nil) {
@@ -204,10 +209,17 @@ public struct OnboardView: View {
                 variant: .filled
             ) {
                 if page == 2 {
+                    // Persist completion so we never show this carousel
+                    // again on this install, then hand off to caller.
+                    UserDefaults.standard.set(true, forKey: kOnboardCompletedKey)
                     nav.setRole(chosenRole)
                     if let onComplete = onComplete {
                         onComplete(chosenRole)
                     } else {
+                        // Clear any stack entries (the boot gate may
+                        // have pushed OnboardView) and show SignIn as
+                        // the next modal-like screen.
+                        nav.clearStack()
                         nav.push(.signIn)
                     }
                 } else {
