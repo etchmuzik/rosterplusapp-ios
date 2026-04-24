@@ -64,6 +64,42 @@ public final class ProfileStore {
 
     // MARK: — Write
 
+    /// Patch the avatar URL column only. Separate from the text-field
+    /// update() because avatar uploads are always a two-step flow
+    /// (upload first, then patch the URL) and we don't want to conflate
+    /// them with the form's other fields.
+    public func updateAvatarURL(_ url: String, userID: UUID) async {
+        lastError = nil
+        guard case .loaded(let existing) = state else {
+            lastError = "Profile not loaded yet."
+            return
+        }
+        let optimistic = ProfileDTO(
+            id: existing.id,
+            email: existing.email,
+            displayName: existing.displayName,
+            role: existing.role,
+            avatarURL: url,
+            phone: existing.phone,
+            company: existing.company,
+            bio: existing.bio,
+            city: existing.city
+        )
+        state = .loaded(optimistic)
+
+        struct Patch: Encodable { let avatar_url: String }
+        do {
+            _ = try await client
+                .from("profiles")
+                .update(Patch(avatar_url: url))
+                .eq("id", value: userID)
+                .execute()
+        } catch {
+            lastError = error.localizedDescription
+            state = .loaded(existing)
+        }
+    }
+
     /// Patch a subset of the profile row. Any nil field is left alone
     /// (we don't wipe columns the caller didn't touch). Optimistic —
     /// flips the local state on `loaded` instantly, rolls back on

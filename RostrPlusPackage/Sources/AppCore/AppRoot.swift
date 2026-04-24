@@ -23,6 +23,7 @@ public struct AppRoot: View {
     @State private var timeline = TimelineStore()
     @State private var profile = ProfileStore()
     @State private var availabilityCheck = AvailabilityCheckStore()
+    @State private var push = PushStore()
     // AnalyticsStore derives from BookingsStore; constructed lazily so
     // it captures the same instance we inject below.
     @State private var analytics: AnalyticsStore? = nil
@@ -62,6 +63,24 @@ public struct AppRoot: View {
                         if analytics == nil {
                             analytics = AnalyticsStore(bookings: bookings)
                         }
+                        // Refresh cached push permission state (the
+                        // user may have toggled it in Settings while
+                        // the app was backgrounded).
+                        Task { await push.refreshAuthorization() }
+                    }
+                    .task(id: userID) {
+                        // Listen for APNs token posts from the app
+                        // shell's AppDelegate. The shell forwards
+                        // didRegisterForRemoteNotificationsWithDeviceToken
+                        // via NotificationCenter; we upsert into
+                        // public.device_tokens scoped to this user.
+                        let center = NotificationCenter.default
+                        for await note in center.notifications(
+                            named: PushStore.tokenReceivedNotification
+                        ) {
+                            guard let data = note.object as? Data else { continue }
+                            await push.register(rawTokenData: data, for: userID)
+                        }
                     }
             }
         }
@@ -76,6 +95,7 @@ public struct AppRoot: View {
         .environment(timeline)
         .environment(profile)
         .environment(availabilityCheck)
+        .environment(push)
         .environment(analytics ?? AnalyticsStore(bookings: bookings))
         .background(R.C.bg0.ignoresSafeArea())
         .preferredColorScheme(.dark)

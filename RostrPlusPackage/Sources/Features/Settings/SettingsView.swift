@@ -25,11 +25,33 @@ public struct SettingsView: View {
     @Bindable var nav: NavigationModel
     @Environment(AuthStore.self) private var auth
     @Environment(ProfileStore.self) private var profileStore
+    @Environment(PushStore.self) private var push
 
-    @State private var pushEnabled = true
     @State private var emailUpdates = true
     @State private var hapticsEnabled = true
     @State private var hideFromSearch = false
+
+    /// Bridges the bell toggle to PushStore.authorization. Reading
+    /// returns the cached iOS permission state; setting triggers the
+    /// OS prompt (first flip) or a no-op if already granted/denied.
+    private var pushEnabledBinding: Binding<Bool> {
+        Binding(
+            get: {
+                push.authorization == .authorized || push.authorization == .provisional
+            },
+            set: { wantsOn in
+                if wantsOn {
+                    Task { await push.requestAuthorization() }
+                } else {
+                    // iOS won't let us revoke on the app's behalf —
+                    // send the user to Settings.app via an alert or
+                    // fall back to local state. Until Wave 5.7 adds
+                    // that UX, we just re-sync with the OS state.
+                    Task { await push.refreshAuthorization() }
+                }
+            }
+        )
+    }
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -145,7 +167,7 @@ public struct SettingsView: View {
 
     private var preferencesSection: some View {
         SettingsSection(title: "Preferences") {
-            ToggleRow(icon: "bell", label: "Push notifications", isOn: $pushEnabled)
+            ToggleRow(icon: "bell", label: "Push notifications", isOn: pushEnabledBinding)
             ToggleRow(icon: "paperplane", label: "Email updates", isOn: $emailUpdates)
             ToggleRow(icon: "waveform", label: "Haptics", isOn: $hapticsEnabled)
         }
@@ -195,10 +217,15 @@ public struct SettingsView: View {
             #if canImport(UIKit)
             UINotificationFeedbackGenerator().notificationOccurred(.warning)
             #endif
-            // AuthStore flips to .signedOut which makes AppRoot swap
-            // in the UnauthenticatedShell automatically. No manual
-            // nav.push(.signIn) needed — the boot gate handles it.
-            Task { await auth.signOut() }
+            // Clear push token first so the device stops receiving
+            // notifications for the signed-out user. AuthStore then
+            // flips to .signedOut and AppRoot swaps shells.
+            Task {
+                if case .signedIn(let userID, _, _) = auth.state {
+                    await push.clearToken(for: userID)
+                }
+                await auth.signOut()
+            }
         }
     }
 }
@@ -302,9 +329,11 @@ private struct ToggleRow: View {
     let nav = NavigationModel()
     let auth = AuthStore()
     let profile = ProfileStore()
+    let push = PushStore()
     return SettingsView(nav: nav)
         .environment(auth)
         .environment(profile)
+        .environment(push)
         .preferredColorScheme(.dark)
 }
 #endif

@@ -1,14 +1,18 @@
 // ProfileEditView.swift — Screen 22
 //
-// Edit the artist's public profile. Wave 5.4: persists live.
+// Edit the artist's public profile. Wave 5.6: avatar uploads go live.
 //   - Stage name + primary genre + socials → public.artists via
 //     ArtistDetailStore.updateProfileCore(...)
 //   - Bio → public.profiles.bio via ProfileStore.update(...)
+//   - Avatar photo → artist-media/<uid>/avatar/<timestamp>.jpg via
+//     RostrStorage.upload(...), then the public URL is patched onto
+//     public.profiles.avatar_url.
 // Saves fire on the Save button with haptic feedback and an inline
-// error banner on failure. Gallery + rider upload still deferred to
-// Wave 5.6 (Supabase Storage wire-up).
+// error banner on failure. Gallery + rider upload still scaffolded
+// (UI only) until the media management sweep.
 
 import SwiftUI
+import PhotosUI
 import DesignSystem
 #if canImport(UIKit)
 import UIKit
@@ -30,6 +34,11 @@ public struct ProfileEditView: View {
     @State private var gallery: [String] = []
     @State private var isSaving = false
     @State private var errorMessage: String?
+
+    // Avatar upload.
+    @State private var avatarURL: URL?
+    @State private var avatarPickerItem: PhotosPickerItem?
+    @State private var isUploadingAvatar = false
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -84,6 +93,9 @@ public struct ProfileEditView: View {
     private func hydrateFromStores() {
         if let profile = profileStore.current {
             bio = profile.bio ?? ""
+            if let raw = profile.avatarURL, let url = URL(string: raw) {
+                avatarURL = url
+            }
         }
         if let myID = artistStore.myArtistID, let detail = artistStore.cache[myID] {
             stageName = detail.stageName
@@ -91,6 +103,67 @@ public struct ProfileEditView: View {
             instagram = detail.social?.instagram ?? ""
             soundcloud = detail.social?.soundcloud ?? ""
             spotify = detail.social?.spotify ?? ""
+        }
+    }
+
+    /// Handle a PhotosPicker selection — load raw bytes, upload to
+    /// artist-media, then PATCH public.profiles.avatar_url with the
+    /// returned public URL. Any failure surfaces in the error banner.
+    private func handleAvatarSelection(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        guard case .signedIn(let userID, _, _) = auth.state else {
+            errorMessage = "Sign in to upload a photo."
+            return
+        }
+        isUploadingAvatar = true
+        errorMessage = nil
+        defer { isUploadingAvatar = false }
+
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                errorMessage = "Couldn't read the selected photo."
+                return
+            }
+            let (ext, mime) = Self.imageEncoding(for: data)
+            let uploaded = try await RostrStorage.upload(
+                data: data,
+                kind: .avatar,
+                extensionHint: ext,
+                userID: userID,
+                contentType: mime
+            )
+            await profileStore.updateAvatarURL(uploaded.publicURL.absoluteString, userID: userID)
+            if let err = profileStore.lastError {
+                errorMessage = err
+                return
+            }
+            avatarURL = uploaded.publicURL
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            #endif
+        } catch let error as RostrStorageError {
+            errorMessage = Self.humanise(error)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Sniff the image header — JPEG vs PNG — so we upload with the
+    /// right content type. PhotosPicker hands us raw Data, no mime.
+    private static func imageEncoding(for data: Data) -> (ext: String, mime: String) {
+        guard data.count >= 4 else { return ("jpg", "image/jpeg") }
+        let header = data.prefix(4)
+        if header.starts(with: [0x89, 0x50, 0x4E, 0x47]) {
+            return ("png", "image/png")
+        }
+        return ("jpg", "image/jpeg")
+    }
+
+    private static func humanise(_ error: RostrStorageError) -> String {
+        switch error {
+        case .notSignedIn:        return "Sign in to upload a photo."
+        case .uploadFailed(let m): return "Upload failed — \(m)"
+        case .urlUnavailable:     return "Couldn't read the uploaded file's URL."
         }
     }
 
@@ -167,14 +240,16 @@ public struct ProfileEditView: View {
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: R.S.md) {
             HStack(alignment: .center, spacing: R.S.md) {
-                Cover(seed: stageName.isEmpty ? "Artist" : stageName, size: 64, cornerRadius: R.Rad.card)
+                avatarThumbnail
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Profile photo")
                         .monoLabel(size: 9.5, tracking: 0.6, color: R.C.fg3)
-                    Button {
-                        // Wave 5.6: Supabase Storage upload.
-                    } label: {
-                        Text("Change")
+                    PhotosPicker(
+                        selection: $avatarPickerItem,
+                        matching: .images,
+                        photoLibrary: .shared()
+                    ) {
+                        Text(isUploadingAvatar ? "Uploading…" : (avatarURL == nil ? "Upload" : "Change"))
                             .font(R.F.mono(10, weight: .semibold))
                             .tracking(0.6)
                             .textCase(.uppercase)
@@ -188,7 +263,8 @@ public struct ProfileEditView: View {
                                 Capsule().strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline)
                             }
                     }
-                    .buttonStyle(.plain)
+                    .disabled(isUploadingAvatar)
+                    .accessibilityLabel("Change profile photo")
                 }
                 Spacer()
             }
@@ -198,6 +274,59 @@ public struct ProfileEditView: View {
         }
         .padding(R.S.md)
         .glassSurface(cornerRadius: R.Rad.card)
+        .onChange(of: avatarPickerItem) { _, newItem in
+            Task { await handleAvatarSelection(newItem) }
+        }
+    }
+
+    /// Either the uploaded photo (AsyncImage) or the deterministic
+    /// gradient Cover fallback when the user hasn't uploaded yet.
+    @ViewBuilder
+    private var avatarThumbnail: some View {
+        if let url = avatarURL {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                case .empty, .failure:
+                    Cover(
+                        seed: stageName.isEmpty ? "Artist" : stageName,
+                        size: nil,
+                        cornerRadius: R.Rad.card
+                    )
+                @unknown default:
+                    Cover(
+                        seed: stageName.isEmpty ? "Artist" : stageName,
+                        size: nil,
+                        cornerRadius: R.Rad.card
+                    )
+                }
+            }
+            .frame(width: 64, height: 64)
+            .clipShape(RoundedRectangle(cornerRadius: R.Rad.card, style: .continuous))
+            .overlay {
+                if isUploadingAvatar {
+                    RoundedRectangle(cornerRadius: R.Rad.card, style: .continuous)
+                        .fill(Color.black.opacity(0.45))
+                    ProgressView().tint(R.C.fg1)
+                }
+            }
+        } else {
+            Cover(
+                seed: stageName.isEmpty ? "Artist" : stageName,
+                size: 64,
+                cornerRadius: R.Rad.card
+            )
+            .overlay {
+                if isUploadingAvatar {
+                    RoundedRectangle(cornerRadius: R.Rad.card, style: .continuous)
+                        .fill(Color.black.opacity(0.45))
+                    ProgressView().tint(R.C.fg1)
+                }
+            }
+        }
     }
 
     // MARK: — Bio card
