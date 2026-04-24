@@ -7,21 +7,29 @@
 //   2. Fee   — amount input + currency pill  (shows conflict banner if any)
 //   3. Review— confirm + send
 //
-// The conflict banner in step 2 is amber. In production it will be
-// driven by the `check_availability` Supabase RPC; here it's on a
-// mock toggle so visual parity is provable without server round-trips.
+// Wave 5.2: submit is live — builds a public.bookings row with the
+// promoter's auth.uid() as promoter_id and the artist's UUID as
+// artist_id, then triggers BookingsStore.refresh() so the new row
+// shows up in the artist's pending-requests list on their dashboard.
+// Conflict detection is still deferred (check_availability RPC).
 
 import SwiftUI
 import DesignSystem
+import Supabase
 #if canImport(UIKit)
 import UIKit
 #endif
 
 public struct BookingView: View {
     @Bindable var nav: NavigationModel
+    @Environment(ArtistDetailStore.self) private var artistDetail
+    @Environment(AuthStore.self) private var auth
+    @Environment(BookingsStore.self) private var bookings
     let artistID: String
 
     @State private var step: Int = 1
+    @State private var isSubmitting: Bool = false
+    @State private var submitError: String? = nil
 
     // Step 1
     @State private var eventDate: Date = Date().addingTimeInterval(86_400 * 7)
@@ -37,6 +45,8 @@ public struct BookingView: View {
         self.nav = nav
         self.artistID = artistID
     }
+
+    private var resolvedArtistID: UUID? { UUID(uuidString: artistID) }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -55,6 +65,18 @@ public struct BookingView: View {
             footerActions
         }
         .background(R.C.bg0)
+        .task {
+            // Warm the artist-detail cache so the review step + any
+            // future read can show the real stage name instead of a
+            // placeholder.
+            if let id = resolvedArtistID {
+                artistDetail.fetch(id: id)
+                // Seed the currency from the artist's base currency.
+                if let ccy = artistDetail.cache[id]?.currency {
+                    currency = ccy
+                }
+            }
+        }
     }
 
     // MARK: — Progress bar
@@ -165,7 +187,10 @@ public struct BookingView: View {
     }
 
     private var displayArtist: String {
-        MockData.artists.first(where: { String($0.id) == artistID })?.stage ?? "Artist"
+        if let id = resolvedArtistID, let cached = artistDetail.cache[id] {
+            return cached.stageName
+        }
+        return "Artist"
     }
 
     // MARK: — Footer actions
@@ -179,10 +204,12 @@ public struct BookingView: View {
             }
             PrimaryButton(
                 step == 3 ? "Send request" : "Continue",
-                variant: .filled
+                variant: .filled,
+                isLoading: isSubmitting,
+                isEnabled: !isSubmitting
             ) {
                 if step == 3 {
-                    submit()
+                    Task { await submit() }
                 } else {
                     withAnimation(R.M.easeOut) { step += 1 }
                 }
@@ -191,6 +218,17 @@ public struct BookingView: View {
         }
         .padding(.horizontal, R.S.lg)
         .padding(.vertical, R.S.md)
+        .overlay(alignment: .top) {
+            if let msg = submitError {
+                Text(msg)
+                    .font(R.F.body(12, weight: .regular))
+                    .foregroundStyle(R.C.red)
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.vertical, R.S.xs)
+                    .background { Capsule().fill(R.C.red.opacity(0.12)) }
+                    .offset(y: -32)
+            }
+        }
         .background {
             LinearGradient(
                 colors: [R.C.bg0.opacity(0.0), R.C.bg0.opacity(0.95), R.C.bg0],
@@ -201,11 +239,73 @@ public struct BookingView: View {
         }
     }
 
-    private func submit() {
-        #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        #endif
-        nav.pop()
+    /// Build the INSERT payload and POST to public.bookings. RLS on the
+    /// table gates writes to the caller's own promoter_id, so the
+    /// server-side policy is the final backstop even if a client skips
+    /// the auth guard here.
+    private func submit() async {
+        guard case .signedIn(let userID, _, _) = auth.state else {
+            submitError = "Sign in to send a request."
+            return
+        }
+        guard let targetArtist = resolvedArtistID else {
+            submitError = "This artist can't receive requests yet."
+            return
+        }
+        isSubmitting = true
+        submitError = nil
+        defer { isSubmitting = false }
+
+        struct InsertRow: Encodable {
+            let promoter_id: UUID
+            let artist_id: UUID
+            let event_name: String
+            let event_date: String       // ISO date-only
+            let event_time: String?      // "HH:mm:ss"
+            let venue_name: String?
+            let fee: Double?
+            let currency: String
+            let status: String
+        }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm:ss"
+
+        let payload = InsertRow(
+            promoter_id: userID,
+            artist_id: targetArtist,
+            event_name: venue.isEmpty ? "Booking request" : venue,
+            event_date: dateFormatter.string(from: eventDate),
+            event_time: timeFormatter.string(from: eventTime),
+            venue_name: venue.isEmpty ? nil : venue,
+            fee: Double(fee.replacingOccurrences(of: ",", with: "")),
+            currency: currency,
+            status: "inquiry"
+        )
+
+        do {
+            _ = try await RostrSupabase.shared
+                .from("bookings")
+                .insert(payload)
+                .execute()
+
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            #endif
+
+            // Refresh so the new row lands in our own BookingsStore
+            // immediately — the artist on the other side will see it
+            // on their next dashboard refresh.
+            bookings.refresh(for: userID, role: .promoter)
+            nav.pop()
+        } catch {
+            submitError = "Couldn't send — \(error.localizedDescription)"
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            #endif
+        }
     }
 }
 
@@ -308,7 +408,23 @@ private struct GlassFieldStyle: TextFieldStyle {
 #if DEBUG
 #Preview("BookingView — Step 1") {
     let nav = NavigationModel()
-    return BookingView(nav: nav, artistID: "1")
+    let auth = AuthStore()
+    let bookings = BookingsStore()
+    let artistDetail = ArtistDetailStore()
+    let id = UUID()
+    artistDetail._testLoad(
+        ArtistDetail(
+            id: id, stageName: "DJ NOVAK",
+            genres: ["Tech House"], citiesActive: ["Dubai"],
+            baseFee: 28_000, currency: "AED", rating: 4.9,
+            totalBookings: 32, verified: true, epkURL: nil,
+            pressQuotes: [], pastPerformances: [], social: nil
+        )
+    )
+    return BookingView(nav: nav, artistID: id.uuidString)
+        .environment(auth)
+        .environment(bookings)
+        .environment(artistDetail)
         .preferredColorScheme(.dark)
 }
 #endif

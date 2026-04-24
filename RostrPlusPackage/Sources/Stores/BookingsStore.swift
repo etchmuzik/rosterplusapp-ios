@@ -138,6 +138,80 @@ public final class BookingsStore {
         }
     }
 
+    // MARK: — Mutations
+
+    /// Response to an inbound booking request. An artist can `.accept`
+    /// (status → `confirmed`) or `.decline` (status → `cancelled`).
+    /// Both update the row optimistically so the dashboard reacts
+    /// instantly; the server write follows and a silent failure leaves
+    /// the optimistic row in place (next refresh reconciles).
+    public enum RequestResponse: String, Sendable {
+        case accept
+        case decline
+
+        var targetStatus: String {
+            switch self {
+            case .accept:  return "confirmed"
+            case .decline: return "cancelled"
+            }
+        }
+    }
+
+    /// Patch a single booking's status. The row moves out of
+    /// `pendingRequests` immediately; the server roundtrip fires in
+    /// the background. RLS enforces that only the booking's artist or
+    /// promoter can write this column.
+    public func respond(to bookingID: UUID, with response: RequestResponse) {
+        // Optimistic local update — find the row in either bucket and
+        // replace it with a new copy carrying the new status.
+        if case .loaded(var up, let past) = state,
+           let idx = up.firstIndex(where: { $0.id == bookingID }) {
+            up[idx] = Self.withStatus(up[idx], status: response.targetStatus)
+            detailCache[bookingID] = up[idx]
+            state = .loaded(upcoming: up, past: past)
+        } else if case .loaded(let up, var past) = state,
+                  let idx = past.firstIndex(where: { $0.id == bookingID }) {
+            past[idx] = Self.withStatus(past[idx], status: response.targetStatus)
+            detailCache[bookingID] = past[idx]
+            state = .loaded(upcoming: up, past: past)
+        }
+
+        Task { [weak self] in
+            guard let self else { return }
+            struct Patch: Encodable { let status: String }
+            do {
+                _ = try await client
+                    .from("bookings")
+                    .update(Patch(status: response.targetStatus))
+                    .eq("id", value: bookingID)
+                    .execute()
+            } catch {
+                // Optimistic row stays; next refresh reconciles with
+                // server truth. A real app would surface a toast here.
+                #if DEBUG
+                print("BookingsStore.respond failed:", error)
+                #endif
+            }
+        }
+    }
+
+    /// Immutable update helper — the struct is a value type so we
+    /// build a new copy rather than mutate (aligned with CLAUDE.md's
+    /// immutability principle).
+    private static func withStatus(_ row: BookingRow, status: String) -> BookingRow {
+        BookingRow(
+            id: row.id,
+            eventName: row.eventName,
+            artistName: row.artistName,
+            venueName: row.venueName,
+            eventDate: row.eventDate,
+            status: status,
+            feeFormatted: row.feeFormatted,
+            currency: row.currency,
+            fee: row.fee
+        )
+    }
+
     // MARK: — Derived
 
     public var upcoming: [BookingRow] {
@@ -153,6 +227,19 @@ public final class BookingsStore {
     /// Next 3 upcoming, for Home's "Up next" section.
     public var upNext: [BookingRow] {
         Array(upcoming.prefix(3))
+    }
+
+    /// Inbound requests for the signed-in artist — any booking where
+    /// the server-side status is still in the decision window. The
+    /// ArtistDashboard surfaces these with Accept/Decline actions.
+    ///
+    /// Contract matches the web app: `inquiry` is the first message the
+    /// promoter sends; `pending` is after the artist has read it but
+    /// not yet decided. Both render as actionable rows until the artist
+    /// flips the status to confirmed or cancelled.
+    public var pendingRequests: [BookingRow] {
+        (upcoming + past).filter { $0.status == "inquiry" || $0.status == "pending" }
+            .sorted { $0.eventDate < $1.eventDate }
     }
 
     /// Compact stats for Home's tile grid.

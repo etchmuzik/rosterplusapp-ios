@@ -4,17 +4,15 @@
 // line 796. Role switch on Home toggles between HomeView (promoter)
 // and this view.
 //
-// Layout top → bottom:
+// Wave 5.2: incoming booking requests + upcoming gigs are fully live.
+// BookingsStore.pendingRequests filters for status == inquiry|pending;
+// Accept/Decline buttons call BookingsStore.respond(to:with:) which
+// optimistically moves the row out of the list and mirrors a PATCH to
+// public.bookings (RLS gates the write to the booking's artist).
 //
-//   1. Greeting row    — "Hi, NOVAK" + role switch back to promoter + bell
-//   2. Earnings card   — This month total (display font hero)
-//                        + last month delta pill
-//                        + progress ring showing % of monthly target
-//   3. Quick action chips — Availability · EPK · Edit profile
-//   4. Incoming requests — vertical list, Accept + Decline inline
-//   5. Upcoming         — compact upcoming list (re-uses promoter
-//                         mock data, since the artist sees the same
-//                         bookings from the other side)
+// Earnings hero is derived from the artist's confirmed + completed
+// bookings. No new store — we reuse BookingsStore + BookingsStore.stats
+// for the monthly total.
 
 import SwiftUI
 import DesignSystem
@@ -24,6 +22,8 @@ import UIKit
 
 public struct ArtistDashboardView: View {
     @Bindable var nav: NavigationModel
+    @Environment(AuthStore.self) private var auth
+    @Environment(BookingsStore.self) private var bookings
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -50,15 +50,22 @@ public struct ArtistDashboardView: View {
 
     // MARK: — Greeting
 
+    private var firstName: String {
+        guard case .signedIn(_, let email, _) = auth.state else { return "artist" }
+        let local = email.split(separator: "@").first.map(String.init) ?? "artist"
+        let token = local.split(separator: ".").first.map(String.init) ?? local
+        return token.prefix(1).uppercased() + token.dropFirst()
+    }
+
     private var greetingRow: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Hi, Novak")
+                Text("Hi, \(firstName)")
                     .font(R.F.display(26, weight: .bold))
                     .tracking(-0.6)
                     .foregroundStyle(R.C.fg1)
-                Text("3 requests waiting")
-                    .monoLabel(size: 10, tracking: 0.6, color: R.C.amber)
+                Text(requestsSubtitle)
+                    .monoLabel(size: 10, tracking: 0.6, color: bookings.pendingRequests.isEmpty ? R.C.fg3 : R.C.amber)
             }
             Spacer()
             roleSwitch
@@ -67,6 +74,15 @@ public struct ArtistDashboardView: View {
         }
         .padding(.horizontal, R.S.lg)
         .padding(.top, R.S.sm)
+    }
+
+    private var requestsSubtitle: String {
+        let count = bookings.pendingRequests.count
+        switch count {
+        case 0: return "All caught up"
+        case 1: return "1 request waiting"
+        default: return "\(count) requests waiting"
+        }
     }
 
     private var roleSwitch: some View {
@@ -119,11 +135,13 @@ public struct ArtistDashboardView: View {
                         RoundedRectangle(cornerRadius: R.Rad.md, style: .continuous)
                             .strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline)
                     }
-                Circle()
-                    .fill(R.C.amber)
-                    .frame(width: 7, height: 7)
-                    .overlay { Circle().strokeBorder(R.C.bg0, lineWidth: 1.5) }
-                    .offset(x: 10, y: -9)
+                if !bookings.pendingRequests.isEmpty {
+                    Circle()
+                        .fill(R.C.amber)
+                        .frame(width: 7, height: 7)
+                        .overlay { Circle().strokeBorder(R.C.bg0, lineWidth: 1.5) }
+                        .offset(x: 10, y: -9)
+                }
             }
         }
         .buttonStyle(.plain)
@@ -137,24 +155,37 @@ public struct ArtistDashboardView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("This month")
                     .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
-                Text("AED 92K")
+                Text(bookings.stats.monthTotal)
                     .font(R.F.display(36, weight: .bold))
                     .tracking(-1.2)
                     .foregroundStyle(R.C.fg1)
                 HStack(spacing: 4) {
-                    Image(systemName: "arrow.up")
+                    Image(systemName: "calendar")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(R.C.green)
-                    Text("24% vs last month")
-                        .monoLabel(size: 9.5, tracking: 0.5, color: R.C.green)
+                        .foregroundStyle(R.C.fg3)
+                    Text("\(bookings.stats.upcomingCount) upcoming")
+                        .monoLabel(size: 9.5, tracking: 0.5, color: R.C.fg3)
                 }
             }
             Spacer()
-            ProgressRing(progress: 0.72, label: "72%", sub: "of target")
-                .frame(width: 80, height: 80)
+            ProgressRing(
+                progress: targetProgress,
+                label: "\(Int(targetProgress * 100))%",
+                sub: "of target"
+            )
+            .frame(width: 80, height: 80)
         }
         .padding(R.S.lg)
         .glassSurface(cornerRadius: R.Rad.card3)
+    }
+
+    /// Fraction of the default monthly target reached. Target defaults
+    /// to 100K of whatever currency the bookings are in — a minimal
+    /// heuristic until profiles carries a user-set goal.
+    private var targetProgress: Double {
+        let total = bookings.upcoming.reduce(0.0) { $0 + ($1.fee ?? 0) }
+        let target = 100_000.0
+        return min(max(total / target, 0), 1)
     }
 
     // MARK: — Quick actions
@@ -169,7 +200,9 @@ public struct ArtistDashboardView: View {
                     nav.push(.calendar)
                 }
                 ActionChip(icon: "doc.richtext", label: "EPK") {
-                    nav.push(.epk(artistID: "me"))
+                    if case .signedIn(let userID, _, _) = auth.state {
+                        nav.push(.epk(artistID: userID.uuidString))
+                    }
                 }
                 ActionChip(icon: "pencil", label: "Edit profile") {
                     nav.push(.profileEdit)
@@ -190,20 +223,52 @@ public struct ArtistDashboardView: View {
                 Text("Booking requests")
                     .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
                 Spacer()
-                Text("\(MockData.incomingRequests.count) waiting")
-                    .monoLabel(size: 9.5, tracking: 0.6, color: R.C.amber)
+                Text("\(bookings.pendingRequests.count) waiting")
+                    .monoLabel(size: 9.5, tracking: 0.6, color: bookings.pendingRequests.isEmpty ? R.C.fg3 : R.C.amber)
             }
             .padding(.horizontal, R.S.lg)
 
-            VStack(spacing: R.S.xs) {
-                ForEach(MockData.incomingRequests) { request in
-                    RequestRow(request: request) {
-                        nav.push(.bookingDetail(bookingID: request.id))
+            if bookings.pendingRequests.isEmpty {
+                emptyRequestsRow
+                    .padding(.horizontal, R.S.lg)
+            } else {
+                VStack(spacing: R.S.xs) {
+                    ForEach(bookings.pendingRequests) { row in
+                        RequestRow(
+                            row: row,
+                            onTap: { nav.push(.bookingDetail(bookingID: row.id.uuidString)) },
+                            onAccept: {
+                                #if canImport(UIKit)
+                                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                #endif
+                                bookings.respond(to: row.id, with: .accept)
+                            },
+                            onDecline: {
+                                #if canImport(UIKit)
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                #endif
+                                bookings.respond(to: row.id, with: .decline)
+                            }
+                        )
                     }
                 }
+                .padding(.horizontal, R.S.lg)
             }
-            .padding(.horizontal, R.S.lg)
         }
+    }
+
+    private var emptyRequestsRow: some View {
+        HStack(spacing: R.S.sm) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(R.C.green)
+            Text("No requests pending. Browse opportunities from the roster side.")
+                .font(R.F.body(12.5, weight: .regular))
+                .foregroundStyle(R.C.fg2)
+            Spacer()
+        }
+        .padding(R.S.md)
+        .glassSurface(cornerRadius: R.Rad.button2, intensity: .soft)
     }
 
     // MARK: — Upcoming
@@ -227,14 +292,31 @@ public struct ArtistDashboardView: View {
             }
             .padding(.horizontal, R.S.lg)
 
-            VStack(spacing: R.S.xs) {
-                ForEach(MockData.upcoming) { booking in
-                    UpcomingRow(booking: booking) {
-                        nav.push(.bookingDetail(bookingID: booking.id))
+            if confirmedUpcoming.isEmpty {
+                Text("No upcoming gigs booked yet.")
+                    .font(R.F.body(12, weight: .regular))
+                    .foregroundStyle(R.C.fg3)
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.vertical, R.S.sm)
+            } else {
+                VStack(spacing: R.S.xs) {
+                    ForEach(confirmedUpcoming) { row in
+                        UpcomingRow(row: row) {
+                            nav.push(.bookingDetail(bookingID: row.id.uuidString))
+                        }
                     }
                 }
+                .padding(.horizontal, R.S.lg)
             }
-            .padding(.horizontal, R.S.lg)
+        }
+    }
+
+    /// Upcoming filtered to the already-confirmed/contracted/completed
+    /// statuses — anything still in inquiry/pending appears in the
+    /// requests section above, so avoid surfacing it twice.
+    private var confirmedUpcoming: [BookingRow] {
+        bookings.upcoming.filter { row in
+            row.status == "confirmed" || row.status == "contracted" || row.status == "completed"
         }
     }
 }
@@ -303,37 +385,38 @@ private struct ActionChip: View {
 // MARK: - Request row
 
 private struct RequestRow: View {
-    let request: MockIncomingRequest
+    let row: BookingRow
     let onTap: () -> Void
+    let onAccept: () -> Void
+    let onDecline: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(request.who)
-                        .font(R.F.body(14, weight: .semibold))
-                        .foregroundStyle(R.C.fg1)
-                    Text("\(request.date) · \(request.venue)")
-                        .font(R.F.body(11.5, weight: .regular))
-                        .foregroundStyle(R.C.fg2)
+            Button(action: onTap) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(row.venueName)
+                            .font(R.F.body(14, weight: .semibold))
+                            .foregroundStyle(R.C.fg1)
+                        Text("\(Self.dateFormatter.string(from: row.eventDate)) · \(row.eventName)")
+                            .font(R.F.body(11.5, weight: .regular))
+                            .foregroundStyle(R.C.fg2)
+                    }
+                    Spacer()
+                    Text(row.status.uppercased())
+                        .monoLabel(size: 8.5, tracking: 0.5, color: row.status == "pending" ? R.C.amber : R.C.fg3)
                 }
-                Spacer()
-                Text(request.time)
-                    .monoLabel(size: 8.5, tracking: 0.5, color: R.C.fg3)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
             HStack(alignment: .center, spacing: R.S.sm) {
-                Text(request.fee)
+                Text(row.feeFormatted)
                     .font(R.F.mono(13, weight: .semibold))
                     .tracking(0.4)
                     .foregroundStyle(R.C.fg1)
                 Spacer()
-                Button {
-                    // Wave 4: wire decline RPC
-                    #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    #endif
-                } label: {
+                Button(action: onDecline) {
                     Text("Decline")
                         .font(R.F.mono(9.5, weight: .semibold))
                         .tracking(0.6)
@@ -347,14 +430,9 @@ private struct RequestRow: View {
                         }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Decline booking request")
 
-                Button {
-                    // Wave 4: wire accept RPC + success haptic
-                    #if canImport(UIKit)
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    #endif
-                    onTap()
-                } label: {
+                Button(action: onAccept) {
                     Text("Accept")
                         .font(R.F.mono(9.5, weight: .bold))
                         .tracking(0.6)
@@ -368,29 +446,35 @@ private struct RequestRow: View {
                         }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Accept booking request")
             }
         }
         .padding(R.S.md)
         .glassSurface(cornerRadius: R.Rad.button2)
-        .contentShape(Rectangle())
     }
+
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE d MMM"
+        return f
+    }()
 }
 
 // MARK: - Upcoming row
 
 private struct UpcomingRow: View {
-    let booking: MockBooking
+    let row: BookingRow
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             HStack(alignment: .center, spacing: R.S.md) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(booking.day)
+                    Text(Self.dayFormatter.string(from: row.eventDate).uppercased())
                         .font(R.F.mono(10, weight: .bold))
                         .tracking(0.8)
                         .foregroundStyle(R.C.fg1)
-                    Text(booking.time)
+                    Text(Self.timeFormatter.string(from: row.eventDate))
                         .font(R.F.mono(9, weight: .medium))
                         .tracking(0.6)
                         .foregroundStyle(R.C.fg3)
@@ -398,15 +482,15 @@ private struct UpcomingRow: View {
                 .frame(width: 54, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(booking.venue)
+                    Text(row.venueName)
                         .font(R.F.body(14, weight: .semibold))
                         .foregroundStyle(R.C.fg1)
-                    Text(booking.artist)
+                    Text(row.artistName)
                         .font(R.F.body(11.5, weight: .regular))
                         .foregroundStyle(R.C.fg2)
                 }
                 Spacer(minLength: R.S.sm)
-                Text(booking.fee)
+                Text(row.feeFormatted)
                     .font(R.F.mono(10.5, weight: .semibold))
                     .tracking(0.4)
                     .foregroundStyle(R.C.fg1)
@@ -416,13 +500,45 @@ private struct UpcomingRow: View {
         }
         .buttonStyle(.plain)
     }
+
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE d"
+        return f
+    }()
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
 }
 
 #if DEBUG
 #Preview("ArtistDashboardView") {
     let nav = NavigationModel()
     nav.setRole(.artist)
+    let auth = AuthStore()
+    let bookings = BookingsStore()
+    bookings._testLoad(
+        upcoming: [
+            BookingRow(id: UUID(), eventName: "Summer Set", artistName: "DJ Novak",
+                       venueName: "Soho Garden",
+                       eventDate: Date().addingTimeInterval(86_400 * 6),
+                       status: "pending",
+                       feeFormatted: "AED 28K", currency: "AED", fee: 28_000),
+            BookingRow(id: UUID(), eventName: "Rooftop", artistName: "DJ Novak",
+                       venueName: "WHITE Dubai",
+                       eventDate: Date().addingTimeInterval(86_400 * 12),
+                       status: "confirmed",
+                       feeFormatted: "AED 32K", currency: "AED", fee: 32_000)
+        ],
+        past: []
+    )
     return ArtistDashboardView(nav: nav)
+        .environment(nav)
+        .environment(auth)
+        .environment(bookings)
         .preferredColorScheme(.dark)
 }
 #endif
