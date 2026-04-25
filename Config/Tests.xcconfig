@@ -4,3 +4,16 @@ SWIFT_OPTIMIZATION_LEVEL = -Onone
 SWIFT_COMPILATION_MODE = singlefile
 ONLY_ACTIVE_ARCH = YES
 ENABLE_TESTABILITY = YES
+
+// Override PRODUCT_NAME and the derived module name so the UITests
+// bundle doesn't collide with the host app target. Both inherit from
+// Shared.xcconfig (PRODUCT_NAME = RostrPlus) and would otherwise
+// produce competing copies of `RostrPlus.swiftmodule/...`, failing the
+// build with "Multiple commands produce" errors.
+//
+// PRODUCT_BUNDLE_IDENTIFIER also gets a `.uitests` suffix so the test
+// runner installs as a separate app bundle on the simulator alongside
+// the host.
+PRODUCT_NAME = RostrPlusUITests
+PRODUCT_MODULE_NAME = RostrPlusUITests
+PRODUCT_BUNDLE_IDENTIFIER = io.rosterplus.app.uitests

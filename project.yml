@@ -65,12 +65,24 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     scheme:
-      testTargets: []
+      # Wire the UITests bundle in so `xcodebuild test -scheme RostrPlus`
+      # actually runs RostrPlusUITests. Without this the scheme is
+      # build-only and xcodebuild fails with
+      # "Scheme RostrPlus is not currently configured for the test action."
+      testTargets:
+        - RostrPlusUITests
       gatherCoverageData: false
       commandLineArguments: {}
       environmentVariables: []
 
-  # UI automation tests live alongside the app.
+  # UI automation tests live alongside the app. UI tests run in their
+  # own process and talk to the host via XCUIApplication's IPC, so
+  # they do NOT need TEST_TARGET_NAME (which is for unit-test bundles
+  # that link against the host module). Setting it on a UI-testing
+  # target makes Xcode try to rebuild the host's Swift module from
+  # both the host target AND the test target, which collides at
+  # `.../RostrPlus.swiftmodule/arm64-apple-ios-simulator.swiftmodule`
+  # and the build dies with "Multiple commands produce" errors.
   RostrPlusUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -82,6 +94,3 @@ targets:
     configFiles:
       Debug: Config/Tests.xcconfig
       Release: Config/Tests.xcconfig
-    settings:
-      base:
-        TEST_TARGET_NAME: RostrPlus
