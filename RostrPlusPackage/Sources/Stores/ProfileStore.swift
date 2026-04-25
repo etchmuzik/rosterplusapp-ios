@@ -156,6 +156,25 @@ public final class ProfileStore {
         }
     }
 
+    /// Flip `profiles.onboarding_complete` to true after the user has
+    /// finished filling out the profile-edit form. Web mirrors this at
+    /// app.js:2993 (`completeOnboarding`) — both clients write to the
+    /// same column so a user who finishes editing on one platform isn't
+    /// re-prompted on the other. Fire-and-forget; surface failures via
+    /// `lastError` but don't block the calling flow.
+    public func markOnboardingComplete(userID: UUID) async {
+        struct Patch: Encodable { let onboarding_complete: Bool }
+        do {
+            _ = try await client
+                .from("profiles")
+                .update(Patch(onboarding_complete: true))
+                .eq("id", value: userID)
+                .execute()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
     // MARK: — Helpers
 
     /// Value-type merge — builds a new ProfileDTO carrying only the

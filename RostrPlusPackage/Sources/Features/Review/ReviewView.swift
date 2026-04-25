@@ -29,11 +29,22 @@ public struct ReviewView: View {
     @State private var rating: Int = 0
     @State private var tags: Set<String> = []
     @State private var note: String = ""
+    @State private var store = ReviewStore()
 
     private let tagOptions = [
         "Punctual", "Pro rider", "Great energy",
         "Clean handover", "Smooth set", "Would rebook"
     ]
+
+    private var isSubmitting: Bool {
+        if case .submitting = store.state { return true }
+        return false
+    }
+
+    private var errorMessage: String? {
+        if case .failed(let msg) = store.state { return msg }
+        return nil
+    }
 
     public init(nav: NavigationModel, bookingID: String) {
         self.nav = nav
@@ -181,11 +192,26 @@ public struct ReviewView: View {
     // MARK: — Submit bar
 
     private var submitBar: some View {
-        PrimaryButton("Submit review", variant: .filled, isEnabled: rating > 0) {
-            #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            #endif
-            nav.pop()
+        VStack(spacing: R.S.sm) {
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(R.F.body(12, weight: .regular))
+                    .foregroundStyle(R.C.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, R.S.md)
+                    .padding(.vertical, R.S.xs)
+                    .background {
+                        RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                            .fill(R.C.red.opacity(0.10))
+                    }
+            }
+            PrimaryButton(
+                isSubmitting ? "Submitting…" : "Submit review",
+                variant: .filled,
+                isEnabled: rating > 0 && !isSubmitting
+            ) {
+                Task { await submit() }
+            }
         }
         .padding(.horizontal, R.S.lg)
         .padding(.vertical, R.S.md)
@@ -196,6 +222,25 @@ public struct ReviewView: View {
             )
             .frame(height: 140)
             .allowsHitTesting(false)
+        }
+    }
+
+    private func submit() async {
+        let ok = await store.submit(
+            bookingID: bookingID,
+            rating: rating,
+            tags: Array(tags),
+            note: note
+        )
+        if ok {
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            #endif
+            nav.pop()
+        } else {
+            #if canImport(UIKit)
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            #endif
         }
     }
 

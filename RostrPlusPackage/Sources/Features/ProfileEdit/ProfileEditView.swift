@@ -340,6 +340,12 @@ public struct ProfileEditView: View {
             }
         }
 
+        // Mirror web's app.js completeOnboarding() — flips
+        // profiles.onboarding_complete=true so the user isn't re-prompted
+        // to onboard the next time they open the web app. Fire-and-forget;
+        // a failure here doesn't change what the user just successfully saved.
+        await profileStore.markOnboardingComplete(userID: userID)
+
         #if canImport(UIKit)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         #endif
