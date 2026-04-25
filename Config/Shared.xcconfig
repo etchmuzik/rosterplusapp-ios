@@ -2,7 +2,11 @@
 // ROSTR+ GCC iOS app.
 
 // ── Identity ─────────────────────────────────────────────
-PRODUCT_NAME = ROSTR+
+// PRODUCT_NAME is the binary name + default CFBundleExecutable.
+// Apple disallows + [ ] { } ( ) * in CFBundleExecutable, so we
+// use the "safe" alphanumeric form. The user-visible name is
+// CFBundleDisplayName below — that gets the branded "ROSTR+".
+PRODUCT_NAME = RostrPlus
 PRODUCT_BUNDLE_IDENTIFIER = io.rosterplus.app
 MARKETING_VERSION = 0.1.0
 CURRENT_PROJECT_VERSION = 1
@@ -34,6 +38,15 @@ ENABLE_USER_SCRIPT_SANDBOXING = YES
 // These land in the generated Info.plist. Xcode injects each
 // INFOPLIST_KEY_* as the matching plist entry, so we don't need
 // a hand-maintained plist file. Add new keys here.
+
+// User-visible name on the home screen. Diverges from PRODUCT_NAME
+// because CFBundleExecutable can't contain '+' (App Store Connect
+// validator rejects it).
+INFOPLIST_KEY_CFBundleDisplayName = ROSTR+
+
+// CFBundleIconName is auto-injected by Xcode based on
+// ASSETCATALOG_COMPILER_APPICON_NAME (set in project.yml) and the
+// presence of an AppIcon set in Assets.xcassets — no manual key here.
 
 // Photo library — PhotosPicker in ProfileEditView (avatar + gallery).
 INFOPLIST_KEY_NSPhotoLibraryUsageDescription = ROSTR+ needs photo access to upload your avatar and gallery images.
