@@ -52,7 +52,7 @@ public final class PushStore {
                 .requestAuthorization(options: [.alert, .badge, .sound])
             authorization = granted ? .authorized : .denied
             if granted {
-                await UIApplication.shared.registerForRemoteNotifications()
+                UIApplication.shared.registerForRemoteNotifications()
             }
         } catch {
             lastError = error.localizedDescription

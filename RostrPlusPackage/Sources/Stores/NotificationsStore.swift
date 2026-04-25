@@ -93,7 +93,11 @@ public final class NotificationsStore {
                 self?.handleInsert(action)
             }
         }
-        await ch.subscribe()
+        do {
+            try await ch.subscribeWithError()
+        } catch {
+            print("NotificationsStore.subscribeRealtime failed:", error)
+        }
         self.channel = ch
         self.subscription = sub
     }

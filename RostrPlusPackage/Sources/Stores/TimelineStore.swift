@@ -122,7 +122,11 @@ public final class TimelineStore {
                 self?.handleInsert(action, for: bookingID)
             }
         }
-        await channel.subscribe()
+        do {
+            try await channel.subscribeWithError()
+        } catch {
+            print("TimelineStore.subscribe failed:", error)
+        }
         activeChannel = channel
         activeSubscription = subscription
     }

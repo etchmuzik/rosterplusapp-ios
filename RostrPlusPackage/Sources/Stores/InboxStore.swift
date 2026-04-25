@@ -137,7 +137,11 @@ public final class InboxStore {
                 self?.handleInboundInsert(action)
             }
         }
-        await ch.subscribe()
+        do {
+            try await ch.subscribeWithError()
+        } catch {
+            print("InboxStore.subscribeRealtime failed:", error)
+        }
         self.channel = ch
         self.subscription = sub
     }

@@ -376,12 +376,15 @@ public struct ProfileEditView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Profile photo")
                         .monoLabel(size: 9.5, tracking: 0.6, color: R.C.fg3)
+                    let avatarButtonLabel = isUploadingAvatar
+                        ? "Uploading…"
+                        : (avatarURL == nil ? "Upload" : "Change")
                     PhotosPicker(
                         selection: $avatarPickerItem,
                         matching: .images,
                         photoLibrary: .shared()
                     ) {
-                        Text(isUploadingAvatar ? "Uploading…" : (avatarURL == nil ? "Upload" : "Change"))
+                        Text(avatarButtonLabel)
                             .font(R.F.mono(10, weight: .semibold))
                             .tracking(0.6)
                             .textCase(.uppercase)
@@ -552,7 +555,9 @@ public struct ProfileEditView: View {
         }
     }
 
+    @ViewBuilder
     private var addTile: some View {
+        let uploading = isUploadingGallery
         PhotosPicker(
             selection: $galleryPickerItem,
             matching: .images,
@@ -568,7 +573,7 @@ public struct ProfileEditView: View {
                         RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
                             .fill(R.C.glassLo)
                     }
-                if isUploadingGallery {
+                if uploading {
                     ProgressView().tint(R.C.fg1)
                 } else {
                     Image(systemName: "plus")
@@ -578,7 +583,7 @@ public struct ProfileEditView: View {
             }
             .aspectRatio(1, contentMode: .fit)
         }
-        .disabled(isUploadingGallery)
+        .disabled(uploading)
         .accessibilityLabel("Add gallery photo")
     }
 
