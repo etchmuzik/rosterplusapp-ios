@@ -14,6 +14,9 @@ public struct RosterView: View {
     @Bindable var nav: NavigationModel
     @Environment(RosterStore.self) private var store
 
+    /// Drives the invite-artist sheet. Promoter-only; gated below.
+    @State private var showingInvite = false
+
     public init(nav: NavigationModel) {
         self.nav = nav
     }
@@ -39,22 +42,60 @@ public struct RosterView: View {
         .onAppear {
             if case .idle = store.state { store.refresh() }
         }
+        .sheet(isPresented: $showingInvite) {
+            InviteSheet()
+        }
     }
 
     // MARK: — Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Roster")
-                .font(R.F.display(30, weight: .bold))
-                .tracking(-0.8)
-                .foregroundStyle(R.C.fg1)
-            Text(headerSubtitle)
-                .monoLabel(size: 10, tracking: 0.6, color: R.C.fg3)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Roster")
+                    .font(R.F.display(30, weight: .bold))
+                    .tracking(-0.8)
+                    .foregroundStyle(R.C.fg1)
+                Text(headerSubtitle)
+                    .monoLabel(size: 10, tracking: 0.6, color: R.C.fg3)
+            }
+            Spacer()
+            // Promoter-only — artists don't issue invites today.
+            // (Server-side RLS doesn't restrict, but the UX makes
+            // sense only for the booking side of the marketplace.)
+            if nav.role == .promoter {
+                inviteButton
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, R.S.lg)
         .padding(.top, R.S.sm)
+    }
+
+    private var inviteButton: some View {
+        Button {
+            showingInvite = true
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "envelope.badge.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("Invite")
+                    .font(R.F.mono(10, weight: .semibold))
+                    .tracking(0.6)
+                    .textCase(.uppercase)
+            }
+            .foregroundStyle(R.C.fg1)
+            .padding(.vertical, 9)
+            .padding(.horizontal, 12)
+            .background {
+                Capsule().fill(R.C.glassLo)
+            }
+            .overlay {
+                Capsule().strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Invite an artist")
     }
 
     private var headerSubtitle: String {
