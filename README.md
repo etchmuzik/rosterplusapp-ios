@@ -6,6 +6,8 @@ Companion to the web repo at [etchmuzik/rosterplusapp](https://github.com/etchmu
 
 The data contract both clients share — Supabase types, the RPC catalog with caller lists per platform, and schema notes — lives in [etchmuzik/rosterplus-shared](https://github.com/etchmuzik/rosterplus-shared). **Cross-check `RPC_CONTRACT.md` there before adding any new `.rpc(` / `.from(` / `.functions.invoke(` call** so iOS and web don't drift apart at the data layer.
 
+For a one-page snapshot of where the platform stands today (live deploy state, parity status, outstanding follow-ups): [`STATUS.md`](https://github.com/etchmuzik/rosterplus-shared/blob/main/STATUS.md) in the shared repo.
+
 ## Status
 
 **TestFlight-ready.** Auth is live, every primary store hits Supabase, the package builds clean under Swift 6 strict concurrency, and `scripts/ship.sh` archives + uploads in one command.
