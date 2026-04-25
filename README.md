@@ -4,6 +4,8 @@ Native iOS app for [ROSTR+ GCC](https://rosterplus.io) — the Gulf region's art
 
 Companion to the web repo at [etchmuzik/rosterplusapp](https://github.com/etchmuzik/rosterplusapp). Same Supabase backend, same brand, different surface.
 
+The data contract both clients share — Supabase types, the RPC catalog with caller lists per platform, and schema notes — lives in [etchmuzik/rosterplus-shared](https://github.com/etchmuzik/rosterplus-shared). **Cross-check `RPC_CONTRACT.md` there before adding any new `.rpc(` / `.from(` / `.functions.invoke(` call** so iOS and web don't drift apart at the data layer.
+
 ## Status
 
 **All 23 screens shipped.** The design handoff is fully realised in SwiftUI.
