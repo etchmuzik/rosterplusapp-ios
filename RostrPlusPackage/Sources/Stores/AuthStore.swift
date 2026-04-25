@@ -123,10 +123,34 @@ public final class AuthStore {
             // RLS-gated calls.
             let session = try await client.auth.signIn(email: email, password: password)
             await apply(session: session)
+        } catch let error as FunctionsError {
+            // Edge function returned a non-2xx — the body carries our
+            // own error codes (email_taken, weak_password, …). Extract
+            // and feed into humanize().
+            lastError = humanize(decodeFunctionError(error) ?? error)
+            state = .signedOut
         } catch {
             lastError = humanize(error)
             state = .signedOut
         }
+    }
+
+    /// Decode the JSON body of a FunctionsError.httpError into a
+    /// stub Error whose localizedDescription is the edge function's
+    /// machine code (email_taken, weak_password, …). humanize() then
+    /// maps it to copy.
+    private func decodeFunctionError(_ error: FunctionsError) -> Error? {
+        guard case .httpError(_, let data) = error else { return nil }
+        struct Body: Decodable { let error: String? }
+        do {
+            let body = try JSONDecoder().decode(Body.self, from: data)
+            if let code = body.error, !code.isEmpty {
+                return AuthError.message(code)
+            }
+        } catch {
+            // Body wasn't JSON — fall through to the original error.
+        }
+        return nil
     }
 
     // MARK: — Forgot password
@@ -239,19 +263,40 @@ public final class AuthStore {
 
     private func humanize(_ error: Error) -> String {
         let raw = error.localizedDescription.lowercased()
-        if raw.contains("invalid login credentials") {
+        // Edge-function specific errors (returned as { error: code } JSON
+        // bodies which surface in the localizedDescription).
+        if raw.contains("email_taken") {
+            return "An account with that email already exists. Try signing in."
+        }
+        if raw.contains("weak_password") {
+            return "Password must be at least 8 characters."
+        }
+        if raw.contains("invalid_email") {
+            return "Enter a valid email address."
+        }
+        if raw.contains("invalid_role") {
+            return "Pick a role on the previous screen first."
+        }
+        if raw.contains("rate_limited") {
+            return "Hold on — try again in a minute."
+        }
+        if raw.contains("misconfigured") {
+            return "Sign-up is temporarily unavailable. Try again shortly."
+        }
+        // GoTrue / Supabase Auth errors.
+        if raw.contains("invalid login credentials") || raw.contains("invalid_credentials") {
             return "Email or password didn't match."
         }
         if raw.contains("email not confirmed") {
             return "Check your inbox for a confirmation link."
         }
-        if raw.contains("password") && raw.contains("short") {
+        if raw.contains("password") && (raw.contains("short") || raw.contains("weak")) {
             return "Password must be at least 8 characters."
         }
         if raw.contains("already") && raw.contains("registered") {
             return "An account with that email already exists. Try signing in."
         }
-        if raw.contains("network") || raw.contains("internet") {
+        if raw.contains("network") || raw.contains("internet") || raw.contains("offline") {
             return "Connection issue — check your network."
         }
         return error.localizedDescription

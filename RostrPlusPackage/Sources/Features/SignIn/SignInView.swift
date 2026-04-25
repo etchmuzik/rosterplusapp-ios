@@ -1,17 +1,18 @@
 // SignInView.swift — Screen 20
 //
-// Sign-in entry. Port of `SignInScreen` at ios-app.jsx line 1776.
+// Email + Apple authentication entry. Two modes share the screen:
 //
-// Track 2 update: backed by a real AuthStore.
-//   • Apple flow forwards Apple's identity-token + nonce to
-//     AuthStore.signInWithApple (Supabase signInWithIdToken).
-//   • Email flow calls AuthStore.signIn(email:password:).
-//   • Google is still a stub — wiring it needs a client-id that's
-//     outside Wave 5's scope.
+//   .signIn  → existing user, calls AuthStore.signIn(email:password:)
+//   .signUp  → new user, calls AuthStore.signUp(email:password:role:displayName:)
+//              which routes through the `signup` edge function.
 //
-// AppRoot reacts to AuthStore.state changing to .signedIn and routes
-// us into the main tab surface automatically — this view doesn't have
-// to push anything on success.
+// Mode is selected by a segmented control near the top of the form
+// and "Create one" / "Sign in" footer link both flip the same flag.
+// Role for new accounts comes from NavigationModel.role (set by
+// OnboardView's role-picker step).
+//
+// AppRoot watches AuthStore.state and routes to the tab surface on
+// success. This view never pushes — flipping to .signedIn is enough.
 
 import SwiftUI
 import AuthenticationServices
@@ -24,8 +25,43 @@ public struct SignInView: View {
     @Bindable var nav: NavigationModel
     @Environment(AuthStore.self) private var auth
 
+    enum Mode: String, CaseIterable {
+        case signIn
+        case signUp
+
+        var headlineEyebrow: String {
+            switch self {
+            case .signIn: return "Welcome back"
+            case .signUp: return "Get started"
+            }
+        }
+
+        var headline: String {
+            switch self {
+            case .signIn: return "Sign in to\nyour ROSTR+."
+            case .signUp: return "Join the\nROSTR+ roster."
+            }
+        }
+
+        var subhead: String {
+            switch self {
+            case .signIn: return "Your contracts, payments, and pipeline — one tap away."
+            case .signUp: return "Bookings, contracts, payments — all in one place."
+            }
+        }
+
+        var primaryCTA: String {
+            switch self {
+            case .signIn: return "Sign in"
+            case .signUp: return "Create account"
+            }
+        }
+    }
+
+    @State private var mode: Mode = .signIn
     @State private var email: String = ""
     @State private var password: String = ""
+    @State private var displayName: String = ""
     @State private var showingEmail: Bool = false
     @State private var isSubmitting: Bool = false
     @State private var appleNonce: String = AppleNonceHelper.random()
@@ -37,31 +73,37 @@ public struct SignInView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            topBar
-            Spacer(minLength: 40)
-            welcome
-                .padding(.horizontal, R.S.lg)
-            Spacer(minLength: 40)
-            providersStack
-                .padding(.horizontal, R.S.lg)
-            divider
-                .padding(.horizontal, R.S.lg)
-                .padding(.vertical, R.S.lg)
-            emailFallback
-                .padding(.horizontal, R.S.lg)
-            if let error = auth.lastError {
-                errorBanner(error)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                topBar
+                Spacer(minLength: 32)
+                welcome
                     .padding(.horizontal, R.S.lg)
-                    .padding(.top, R.S.xs)
+                modeToggle
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.top, R.S.lg)
+                Spacer(minLength: 24)
+                providersStack
+                    .padding(.horizontal, R.S.lg)
+                divider
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.vertical, R.S.lg)
+                emailFallback
+                    .padding(.horizontal, R.S.lg)
+                if let error = auth.lastError {
+                    errorBanner(error)
+                        .padding(.horizontal, R.S.lg)
+                        .padding(.top, R.S.xs)
+                }
+                Spacer(minLength: 32)
+                footer
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.bottom, R.S.xl)
             }
-            Spacer(minLength: 40)
-            footer
-                .padding(.horizontal, R.S.lg)
-                .padding(.bottom, R.S.xl)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(R.C.bg0)
+        .scrollDismissesKeyboard(.interactively)
     }
 
     // MARK: — Top bar (close)
@@ -90,24 +132,69 @@ public struct SignInView: View {
 
     private var welcome: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
-            Text("Welcome back")
+            Text(mode.headlineEyebrow)
                 .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
-            Text("Sign in to\nyour ROSTR+.")
+            Text(mode.headline)
                 .font(R.F.display(36, weight: .bold))
                 .tracking(-1.2)
                 .foregroundStyle(R.C.fg1)
-            Text("Your contracts, payments, and pipeline — one tap away.")
+            Text(mode.subhead)
                 .font(R.F.body(13, weight: .regular))
                 .foregroundStyle(R.C.fg2)
         }
     }
 
-    // MARK: — Providers
+    // MARK: — Mode toggle (Sign in ↔ Sign up)
+
+    private var modeToggle: some View {
+        HStack(spacing: 4) {
+            ForEach(Mode.allCases, id: \.self) { m in
+                Button {
+                    if mode != m {
+                        withAnimation(R.M.easeOut) {
+                            mode = m
+                            // Wipe transient state when flipping modes
+                            // so error banners + reset-sent toasts
+                            // don't bleed across.
+                            resetSentMessage = nil
+                        }
+                        #if canImport(UIKit)
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        #endif
+                    }
+                } label: {
+                    Text(m == .signIn ? "Sign in" : "Sign up")
+                        .font(R.F.mono(11, weight: .semibold))
+                        .tracking(0.5)
+                        .foregroundStyle(mode == m ? R.C.bg0 : R.C.fg2)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background {
+                            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                                .fill(mode == m ? R.C.fg1 : Color.clear)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(mode == m ? [.isSelected] : [])
+            }
+        }
+        .padding(4)
+        .background {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .fill(R.C.glassLo)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
+                .strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline)
+        }
+    }
+
+    // MARK: — Providers (Apple, Google)
 
     private var providersStack: some View {
         VStack(spacing: R.S.sm) {
             SignInWithAppleButton(
-                .signIn,
+                mode == .signUp ? .signUp : .signIn,
                 onRequest: { request in
                     request.requestedScopes = [.fullName, .email]
                     request.nonce = AppleNonceHelper.sha256(appleNonce)
@@ -119,35 +206,9 @@ public struct SignInView: View {
             .signInWithAppleButtonStyle(.white)
             .frame(height: 48)
             .clipShape(RoundedRectangle(cornerRadius: R.Rad.button, style: .continuous))
-            .accessibilityLabel("Sign in with Apple")
+            .accessibilityLabel(mode == .signUp ? "Sign up with Apple" : "Sign in with Apple")
 
-            Button {
-                // Google OAuth wiring deferred — needs a client id.
-                // For now, just flag it on the error line so the user
-                // isn't confused why nothing happens.
-                auth_setPlaceholderError("Google sign-in lands in a follow-up. Use Apple or email for now.")
-            } label: {
-                HStack(spacing: R.S.sm) {
-                    Image(systemName: "g.circle.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(R.C.fg1)
-                    Text("Continue with Google")
-                        .font(R.F.body(14, weight: .semibold))
-                        .foregroundStyle(R.C.fg1)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background {
-                    RoundedRectangle(cornerRadius: R.Rad.button, style: .continuous)
-                        .fill(R.C.glassMid)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: R.Rad.button, style: .continuous)
-                        .strokeBorder(R.C.borderSoft, lineWidth: R.S.hairline)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Sign in with Google")
+            // Google deferred — no client id wired yet.
         }
     }
 
@@ -168,34 +229,57 @@ public struct SignInView: View {
     private var emailFallback: some View {
         if showingEmail {
             VStack(alignment: .leading, spacing: R.S.sm) {
+                if mode == .signUp {
+                    textField(
+                        "Display name",
+                        text: $displayName,
+                        keyboard: .default,
+                        autocapitalization: .words
+                    )
+                }
                 textField("Email", text: $email, keyboard: .emailAddress)
-                textField("Password", text: $password, secure: true)
+                textField(
+                    mode == .signUp ? "Password (min 8 chars)" : "Password",
+                    text: $password,
+                    secure: true
+                )
+
                 PrimaryButton(
-                    "Sign in",
+                    mode.primaryCTA,
                     variant: .filled,
                     isLoading: isSubmitting,
                     isEnabled: canSubmit && !isSubmitting
                 ) {
                     Task { await submitEmail() }
                 }
-                Button {
-                    Task { await sendPasswordReset() }
-                } label: {
-                    if isSendingReset {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(R.C.fg2)
-                            .frame(height: 14)
-                    } else {
-                        Text("Forgot password?")
-                            .monoLabel(size: 10, tracking: 0.4, color: R.C.fg2)
+
+                if mode == .signIn {
+                    Button {
+                        Task { await sendPasswordReset() }
+                    } label: {
+                        if isSendingReset {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(R.C.fg2)
+                                .frame(height: 14)
+                        } else {
+                            Text("Forgot password?")
+                                .monoLabel(size: 10, tracking: 0.4, color: R.C.fg2)
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .disabled(isSendingReset || !email.contains("@"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
+                    .accessibilityLabel("Send password reset email")
+                } else {
+                    Text("By creating an account you agree to our Terms and Privacy.")
+                        .font(R.F.body(11, weight: .regular))
+                        .foregroundStyle(R.C.fg3)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 4)
                 }
-                .buttonStyle(.plain)
-                .disabled(isSendingReset || !email.contains("@"))
-                .frame(maxWidth: .infinity)
-                .padding(.top, 4)
-                .accessibilityLabel("Send password reset email")
 
                 if let resetSentMessage {
                     Text(resetSentMessage)
@@ -212,7 +296,7 @@ public struct SignInView: View {
             Button {
                 withAnimation(R.M.easeOut) { showingEmail = true }
             } label: {
-                Text("Use email + password")
+                Text(mode == .signUp ? "Use email + password" : "Use email + password")
                     .font(R.F.mono(11, weight: .semibold))
                     .tracking(0.5)
                     .foregroundStyle(R.C.fg2)
@@ -223,8 +307,17 @@ public struct SignInView: View {
         }
     }
 
+    /// Form gate. Sign-in needs only email + password; sign-up also
+    /// needs a non-empty display name + a stricter 8-char password.
     private var canSubmit: Bool {
-        email.contains("@") && password.count >= 6
+        guard email.contains("@") else { return false }
+        switch mode {
+        case .signIn:
+            return password.count >= 6
+        case .signUp:
+            return password.count >= 8 &&
+                   displayName.trimmingCharacters(in: .whitespaces).count >= 2
+        }
     }
 
     // MARK: — Error banner
@@ -255,33 +348,38 @@ public struct SignInView: View {
     private var footer: some View {
         VStack(spacing: 6) {
             HStack(spacing: 4) {
-                Text("No account?")
+                Text(mode == .signIn ? "No account?" : "Have an account?")
                     .font(R.F.body(12, weight: .regular))
                     .foregroundStyle(R.C.fg3)
                 Button {
-                    // Signup uses the same email form but routes
-                    // through the `signup` edge function. For Wave 5
-                    // we just toggle the email form open; Wave 5.1
-                    // adds a distinct /signup screen with role picker
-                    // (today's onboarding already picks the role).
-                    withAnimation(R.M.easeOut) { showingEmail = true }
+                    withAnimation(R.M.easeOut) {
+                        mode = (mode == .signIn) ? .signUp : .signIn
+                        showingEmail = true
+                        resetSentMessage = nil
+                    }
+                    #if canImport(UIKit)
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    #endif
                 } label: {
-                    Text("Create one")
+                    Text(mode == .signIn ? "Create one" : "Sign in")
                         .font(R.F.body(12, weight: .semibold))
                         .foregroundStyle(R.C.fg1)
                 }
                 .buttonStyle(.plain)
             }
-            Text("By signing in you agree to our Terms and Privacy.")
-                .monoLabel(size: 8.5, tracking: 0.4, color: R.C.fg3)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
     }
 
     // MARK: — Form helpers
 
-    private func textField(_ label: String, text: Binding<String>, keyboard: UIKeyboardType = .default, secure: Bool = false) -> some View {
+    private func textField(
+        _ label: String,
+        text: Binding<String>,
+        keyboard: UIKeyboardType = .default,
+        secure: Bool = false,
+        autocapitalization: TextInputAutocapitalization = .never
+    ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .monoLabel(size: 8.5, tracking: 0.5, color: R.C.fg3)
@@ -291,7 +389,7 @@ public struct SignInView: View {
                 } else {
                     TextField("", text: text, prompt: Text(label).foregroundStyle(R.C.fg3))
                         .keyboardType(keyboard)
-                        .textInputAutocapitalization(.never)
+                        .textInputAutocapitalization(autocapitalization)
                         .autocorrectionDisabled()
                 }
             }
@@ -312,15 +410,35 @@ public struct SignInView: View {
 
     // MARK: — Submission
 
+    /// Single entrypoint for both modes — keeps the haptic + post-success
+    /// branching logic in one place.
     private func submitEmail() async {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
+        let trimmedName = displayName.trimmingCharacters(in: .whitespaces)
         isSubmitting = true
         defer { isSubmitting = false }
-        await auth.signIn(email: email, password: password)
+
+        switch mode {
+        case .signIn:
+            await auth.signIn(email: trimmedEmail, password: password)
+        case .signUp:
+            // Pull role from NavigationModel — OnboardView sets it on
+            // role-picker continue. Fallback to "promoter" so users
+            // who deep-link past onboarding still get a valid role.
+            let role: String = (nav.role == .artist) ? "artist" : "promoter"
+            await auth.signUp(
+                email: trimmedEmail,
+                password: password,
+                role: role,
+                displayName: trimmedName
+            )
+        }
+
         if auth.isSignedIn {
             #if canImport(UIKit)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             #endif
-            // AppRoot is watching AuthStore.state and will route to tabs.
+            // AppRoot watches AuthStore.state and routes to tabs.
         } else {
             #if canImport(UIKit)
             UINotificationFeedbackGenerator().notificationOccurred(.error)
@@ -360,23 +478,12 @@ public struct SignInView: View {
             }
             Task {
                 await auth.signInWithApple(credential: credential, nonce: appleNonce)
-                // Rotate nonce so re-press uses a fresh one.
                 appleNonce = AppleNonceHelper.random()
             }
         case .failure:
             // User cancelled — no error banner.
             break
         }
-    }
-
-    /// AuthStore owns `lastError`, but that's driven by actual Supabase
-    /// calls. For a no-backend stub like Google today, we can't assign
-    /// to it directly — so this helper toggles a dummy auth call that
-    /// sets the same banner. Clean-up candidate when Google lands.
-    private func auth_setPlaceholderError(_ message: String) {
-        // There's no public setter for `lastError`; if we ever need
-        // one, add it to AuthStore. For now, a brief no-op.
-        _ = message
     }
 }
 
