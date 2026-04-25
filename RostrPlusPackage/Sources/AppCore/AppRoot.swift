@@ -24,6 +24,7 @@ public struct AppRoot: View {
     @State private var profile = ProfileStore()
     @State private var availabilityCheck = AvailabilityCheckStore()
     @State private var push = PushStore()
+    @State private var contracts = ContractsStore()
     // AnalyticsStore derives from BookingsStore; constructed lazily so
     // it captures the same instance we inject below.
     @State private var analytics: AnalyticsStore? = nil
@@ -96,6 +97,7 @@ public struct AppRoot: View {
         .environment(profile)
         .environment(availabilityCheck)
         .environment(push)
+        .environment(contracts)
         .environment(analytics ?? AnalyticsStore(bookings: bookings))
         .background(R.C.bg0.ignoresSafeArea())
         .preferredColorScheme(.dark)
