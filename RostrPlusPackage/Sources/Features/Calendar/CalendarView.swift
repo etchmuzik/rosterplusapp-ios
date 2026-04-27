@@ -22,23 +22,26 @@ public struct CalendarView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                    .padding(.horizontal, R.S.lg)
-                    .padding(.top, R.S.sm)
-                monthNav
-                    .padding(.horizontal, R.S.lg)
-                    .padding(.top, R.S.md)
-                calendarCard
-                    .padding(.horizontal, R.S.lg)
-                    .padding(.top, R.S.md)
-                legend
-                    .padding(.horizontal, R.S.lg)
-                    .padding(.top, R.S.sm)
-                monthListSection
-                    .padding(.top, R.S.xxl)
-                Color.clear.frame(height: 100)
+        VStack(spacing: 0) {
+            NavHeader(title: "Calendar", onBack: { nav.pop() })
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    header
+                        .padding(.horizontal, R.S.lg)
+                        .padding(.top, R.S.sm)
+                    monthNav
+                        .padding(.horizontal, R.S.lg)
+                        .padding(.top, R.S.md)
+                    calendarCard
+                        .padding(.horizontal, R.S.lg)
+                        .padding(.top, R.S.md)
+                    legend
+                        .padding(.horizontal, R.S.lg)
+                        .padding(.top, R.S.sm)
+                    monthListSection
+                        .padding(.top, R.S.xxl)
+                    Color.clear.frame(height: 100)
+                }
             }
         }
         .background(R.C.bg0)
