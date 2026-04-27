@@ -54,6 +54,10 @@ public struct HomeView: View {
             }
         }
         .background(R.C.bg0)
+        .refreshable {
+            guard let userID = auth.currentUserID else { return }
+            bookings.refresh(for: userID, role: nav.role)
+        }
     }
 
     // MARK: — Greeting row

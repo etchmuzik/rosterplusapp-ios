@@ -10,6 +10,7 @@ import DesignSystem
 public struct InboxView: View {
     @Bindable var nav: NavigationModel
     @Environment(InboxStore.self) private var store
+    @Environment(AuthStore.self) private var auth
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -55,6 +56,10 @@ public struct InboxView: View {
             }
         }
         .background(R.C.bg0)
+        .refreshable {
+            guard let userID = auth.currentUserID else { return }
+            store.refresh(for: userID)
+        }
     }
 
     private var header: some View {

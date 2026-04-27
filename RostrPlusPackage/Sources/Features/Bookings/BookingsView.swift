@@ -17,6 +17,7 @@ import DesignSystem
 public struct BookingsView: View {
     @Bindable var nav: NavigationModel
     @Environment(BookingsStore.self) private var bookings
+    @Environment(AuthStore.self) private var auth
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -58,6 +59,10 @@ public struct BookingsView: View {
             }
         }
         .background(R.C.bg0)
+        .refreshable {
+            guard let userID = auth.currentUserID else { return }
+            bookings.refresh(for: userID, role: nav.role)
+        }
     }
 
     // MARK: — Derived

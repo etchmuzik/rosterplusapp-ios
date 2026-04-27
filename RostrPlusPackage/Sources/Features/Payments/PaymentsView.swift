@@ -10,6 +10,7 @@ import DesignSystem
 public struct PaymentsView: View {
     @Bindable var nav: NavigationModel
     @Environment(PaymentsStore.self) private var store
+    @Environment(AuthStore.self) private var auth
     @State private var filter: Filter = .all
 
     enum Filter: String, CaseIterable {
@@ -33,6 +34,10 @@ public struct PaymentsView: View {
             .padding(.top, R.S.sm)
         }
         .background(R.C.bg0)
+        .refreshable {
+            guard let userID = auth.currentUserID else { return }
+            store.refresh(for: userID)
+        }
     }
 
     // MARK: — Header
@@ -166,8 +171,8 @@ public struct PaymentsView: View {
 
     // MARK: — Helpers
 
-    private func sumAmount(_ rows: [PaymentRow]) -> Double {
-        rows.reduce(0) { $0 + $1.amount }
+    private func sumAmount(_ rows: [PaymentRow]) -> Decimal {
+        rows.reduce(Decimal(0)) { $0 + $1.amount }
     }
 
     private func firstCcy(_ rows: [PaymentRow]) -> String {
@@ -178,13 +183,8 @@ public struct PaymentsView: View {
         store.items.first?.currency ?? "AED"
     }
 
-    private func formatMoney(_ amount: Double, ccy: String) -> String {
-        if amount >= 1000 {
-            let thousands = amount / 1000
-            let isWhole = thousands.truncatingRemainder(dividingBy: 1) == 0
-            return "\(ccy) \(isWhole ? "\(Int(thousands))" : String(format: "%.1f", thousands))K"
-        }
-        return "\(ccy) \(Int(amount))"
+    private func formatMoney(_ amount: Decimal, ccy: String) -> String {
+        MoneyFormatter.compact(amount, currency: ccy)
     }
 }
 

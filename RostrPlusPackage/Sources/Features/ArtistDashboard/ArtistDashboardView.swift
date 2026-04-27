@@ -46,6 +46,10 @@ public struct ArtistDashboardView: View {
             }
         }
         .background(R.C.bg0)
+        .refreshable {
+            guard let userID = auth.currentUserID else { return }
+            bookings.refresh(for: userID, role: nav.role)
+        }
     }
 
     // MARK: — Greeting
@@ -183,9 +187,12 @@ public struct ArtistDashboardView: View {
     /// to 100K of whatever currency the bookings are in — a minimal
     /// heuristic until profiles carries a user-set goal.
     private var targetProgress: Double {
-        let total = bookings.upcoming.reduce(0.0) { $0 + ($1.fee ?? 0) }
-        let target = 100_000.0
-        return min(max(total / target, 0), 1)
+        let total: Decimal = bookings.upcoming.reduce(Decimal(0)) { $0 + ($1.fee ?? 0) }
+        let target: Decimal = 100_000
+        // The progress bar is a Double 0...1; this conversion is fine
+        // (bounded inputs, no exactness needed for a visual fill).
+        let ratio = NSDecimalNumber(decimal: total / target).doubleValue
+        return min(max(ratio, 0), 1)
     }
 
     // MARK: — Quick actions
