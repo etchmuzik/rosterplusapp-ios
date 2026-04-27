@@ -21,7 +21,7 @@ public struct OfflineBanner: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(R.C.fg1)
                         .accessibilityHidden(true)
-                    Text("You're offline")
+                    Text(S.State.offline)
                         .font(R.F.body(12, weight: .semibold))
                         .foregroundStyle(R.C.fg1)
                 }
@@ -33,7 +33,7 @@ public struct OfflineBanner: View {
                         .fill(R.C.amber.opacity(0.9))
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("You are currently offline")
+                .accessibilityLabel(S.State.offline)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }

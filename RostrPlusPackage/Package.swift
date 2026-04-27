@@ -59,7 +59,13 @@ let package = Package(
                 .product(name: "Supabase", package: "supabase-swift")
             ],
             path: "Sources",
-            exclude: ["DesignSystem"]
+            exclude: ["DesignSystem"],
+            resources: [
+                // String catalog with EN + AR translations. SPM picks
+                // up .xcstrings automatically in modern toolchains, but
+                // we list the directory to be explicit.
+                .process("Resources")
+            ]
         ),
 
         // ─── Tests ────────────────────────────────────────────────

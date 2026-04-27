@@ -1,0 +1,178 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "common.back" : {
+      "comment" : "Back button label across all detail headers (NavHeader).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "رجوع" } }
+      }
+    },
+    "common.cancel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "إلغاء" } }
+      }
+    },
+    "common.save" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "حفظ" } }
+      }
+    },
+    "common.done" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "تم" } }
+      }
+    },
+    "common.retry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "إعادة المحاولة" } }
+      }
+    },
+    "tab.home" : {
+      "comment" : "Tab bar — first tab. 'Tonight' connotation in EN; mirrored to a single-word ar label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Home" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "الرئيسية" } }
+      }
+    },
+    "tab.roster" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Roster" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "الفنانون" } }
+      }
+    },
+    "tab.bookings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bookings" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "الحجوزات" } }
+      }
+    },
+    "tab.inbox" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Inbox" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "الرسائل" } }
+      }
+    },
+    "tab.me" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Me" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "حسابي" } }
+      }
+    },
+    "auth.signin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "تسجيل الدخول" } }
+      }
+    },
+    "auth.signup" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Create account" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "إنشاء حساب" } }
+      }
+    },
+    "auth.signout" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign out" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "تسجيل الخروج" } }
+      }
+    },
+    "auth.forgotpassword" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Forgot password?" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "نسيت كلمة المرور؟" } }
+      }
+    },
+    "cta.book" : {
+      "comment" : "Primary booking CTA used across Artist, EPK, and quick-book flows.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Book via ROSTR+" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "احجز عبر ROSTR+" } }
+      }
+    },
+    "cta.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Message" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "مراسلة" } }
+      }
+    },
+    "cta.share" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Share" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "مشاركة" } }
+      }
+    },
+    "state.loading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading…" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "جارٍ التحميل…" } }
+      }
+    },
+    "state.empty.bookings" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No bookings yet" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا توجد حجوزات بعد" } }
+      }
+    },
+    "state.empty.inbox" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No conversations yet" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "لا توجد محادثات بعد" } }
+      }
+    },
+    "state.offline" : {
+      "comment" : "Offline banner — must stay terse to fit the slim banner.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You're offline" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "أنت غير متصل" } }
+      }
+    },
+    "epk.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "EPK" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "الملف الترويجي" } }
+      }
+    },
+    "calendar.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Calendar" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "التقويم" } }
+      }
+    },
+    "notifications.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications" } },
+        "ar" : { "stringUnit" : { "state" : "translated", "value" : "الإشعارات" } }
+      }
+    }
+  }
+}

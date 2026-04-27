@@ -46,7 +46,7 @@ public struct NavHeader<Trailing: View>: View {
                     }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Back")
+            .accessibilityLabel(S.Common.back)
 
             Text(title)
                 .font(R.F.display(20, weight: .bold))
