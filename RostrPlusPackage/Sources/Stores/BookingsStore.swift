@@ -11,7 +11,10 @@
 
 import Foundation
 import Observation
+import OSLog
 import Supabase
+
+private let log = Logger(subsystem: "io.rosterplus.app", category: "BookingsStore")
 
 /// Display shape. RosterArtist-style local type so views don't have
 /// to deal with DTO optionals at render time.
@@ -24,7 +27,7 @@ public struct BookingRow: Identifiable, Hashable, Sendable {
     public let status: String
     public let feeFormatted: String
     public let currency: String
-    public let fee: Double?
+    public let fee: Decimal?
 
     /// Raw server status string. Views map this to their local enum
     /// via a `statusTag(for:)` helper — kept as text so the store
@@ -54,6 +57,17 @@ public final class BookingsStore {
     private var detailInFlight: Set<UUID> = []
 
     public init() {}
+
+    /// Drop all cached rows and cancel any in-flight fetch. Called on
+    /// sign-out so the next signed-in user starts from a clean slate
+    /// rather than briefly seeing the previous user's data.
+    public func reset() {
+        inFlight?.cancel()
+        inFlight = nil
+        detailInFlight.removeAll()
+        detailCache.removeAll()
+        state = .idle
+    }
 
     // MARK: — List
 
@@ -190,7 +204,7 @@ public final class BookingsStore {
                 // Optimistic row stays; next refresh reconciles with
                 // server truth. A real app would surface a toast here.
                 #if DEBUG
-                print("BookingsStore.respond failed:", error)
+                log.error("respond failed: \(error.localizedDescription, privacy: .public)")
                 #endif
             }
         }
@@ -252,12 +266,12 @@ public final class BookingsStore {
         let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? now
         // Sum fees for bookings in the current calendar month. Mixes
         // currencies naively for now — production gets a converter.
-        let monthSum = (upcoming + past)
+        let monthSum: Decimal = (upcoming + past)
             .filter { $0.eventDate >= monthStart && $0.eventDate <= now.addingTimeInterval(30 * 86_400) }
             .compactMap(\.fee)
-            .reduce(0, +)
+            .reduce(Decimal(0), +)
         let currency = (upcoming.first?.currency ?? past.first?.currency ?? "AED")
-        return (up, pending, "\(currency) \(Self.formatK(monthSum))")
+        return (up, pending, MoneyFormatter.compact(monthSum, currency: currency))
     }
 
     // MARK: — Helpers
@@ -279,11 +293,7 @@ public final class BookingsStore {
     private static func rowFromDTO(_ dto: BookingDTO) -> BookingRow {
         let fee = dto.fee ?? 0
         let currency = dto.currency ?? "AED"
-        let feeStr: String = {
-            if fee == 0 { return "—" }
-            if fee >= 1000 { return "\(currency) \(formatK(fee))" }
-            return "\(currency) \(Int(fee))"
-        }()
+        let feeStr: String = fee == 0 ? "—" : MoneyFormatter.compact(fee, currency: currency)
         return BookingRow(
             id: dto.id,
             eventName: dto.eventName ?? "Event",
@@ -295,17 +305,6 @@ public final class BookingsStore {
             currency: currency,
             fee: dto.fee
         )
-    }
-
-    /// AED 28,000 → "28K". AED 184 → "184" (callers also gate on >= 1K).
-    private static func formatK(_ amount: Double) -> String {
-        let thousands = amount / 1000
-        if amount >= 1000 {
-            return thousands.truncatingRemainder(dividingBy: 1) == 0
-                ? "\(Int(thousands))K"
-                : String(format: "%.1fK", thousands)
-        }
-        return "\(Int(amount))"
     }
 
     #if DEBUG

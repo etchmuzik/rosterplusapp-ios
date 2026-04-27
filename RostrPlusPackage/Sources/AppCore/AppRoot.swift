@@ -14,6 +14,11 @@ import DesignSystem
 public struct AppRoot: View {
     @State private var nav = NavigationModel()
     @State private var auth = AuthStore()
+    /// Deep-link target waiting for sign-in to land. Set by external
+    /// triggers (push tap, universal link) while the user is signed-out;
+    /// consumed by the .onChange(of: auth.state) handler below as soon
+    /// as auth flips to .signedIn.
+    @State private var pendingDeepLink: Route?
     @State private var roster = RosterStore()
     @State private var bookings = BookingsStore()
     @State private var inbox = InboxStore()
@@ -26,23 +31,27 @@ public struct AppRoot: View {
     @State private var push = PushStore()
     @State private var contracts = ContractsStore()
     @State private var invitations = InvitationsStore()
+    @State private var network = NetworkMonitor()
     // AnalyticsStore derives from BookingsStore; constructed lazily so
     // it captures the same instance we inject below.
     @State private var analytics: AnalyticsStore? = nil
 
+    @Environment(\.scenePhase) private var scenePhase
+
     public init() {}
 
     public var body: some View {
-        Group {
-            switch auth.state {
-            case .unknown:
-                LoadingShell()
+        ZStack(alignment: .top) {
+            Group {
+                switch auth.state {
+                case .unknown:
+                    LoadingShell()
 
-            case .signedOut:
-                UnauthenticatedShell(nav: nav)
+                case .signedOut:
+                    UnauthenticatedShell(nav: nav)
 
-            case .signedIn(let userID, _, let role):
-                AuthenticatedShell(nav: nav)
+                case .signedIn(let userID, _, let role):
+                    AuthenticatedShell(nav: nav)
                     .onAppear {
                         // Keep NavigationModel.role in sync with the
                         // server-side role after every fresh sign-in.
@@ -84,7 +93,12 @@ public struct AppRoot: View {
                             await push.register(rawTokenData: data, for: userID)
                         }
                     }
+                }
             }
+            // Offline banner sits above all content. NetworkMonitor
+            // hides it the rest of the time so the layer is invisible
+            // when there's nothing to say.
+            OfflineBanner()
         }
         .environment(nav)
         .environment(auth)
@@ -100,12 +114,99 @@ public struct AppRoot: View {
         .environment(push)
         .environment(contracts)
         .environment(invitations)
+        .environment(network)
         .environment(analytics ?? AnalyticsStore(bookings: bookings))
         .background(R.C.bg0.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .task {
             await auth.loadSession()
             await auth.startObserving()
+        }
+        .task {
+            // Listen for deep-link route requests from external triggers
+            // (push-notification taps from AppDelegate). The publisher
+            // is process-wide so this stream lives for the whole app
+            // lifetime — no .task(id:) reset needed. If the user is
+            // signed-out when the tap arrives, stash the route and let
+            // the auth.state onChange handler below replay it on sign-in.
+            for await note in NotificationCenter.default.notifications(
+                named: PushStore.routeRequestedNotification
+            ) {
+                guard let route = note.object as? Route else { continue }
+                if auth.isSignedIn {
+                    nav.push(route)
+                } else {
+                    pendingDeepLink = route
+                }
+            }
+        }
+        .onOpenURL { url in
+            // Universal link (https://rosterplus.io/...) or custom scheme
+            // (rostr://...). Either way, the path component decides the
+            // route. Unrecognised paths are dropped silently — the OS
+            // still opens the app.
+            guard let route = Route.parse(href: url.path.isEmpty ? url.absoluteString : url.path)
+            else { return }
+            if auth.isSignedIn {
+                nav.push(route)
+            } else {
+                pendingDeepLink = route
+            }
+        }
+        .onChange(of: auth.state) { _, newValue in
+            // On sign-out (or session expiry the SDK reports as
+            // signedOut), wipe every user-scoped store. Otherwise the
+            // next signed-in user briefly sees the previous user's
+            // bookings / inbox / notifications / etc. before refresh
+            // overwrites them. Realtime channels are torn down inside
+            // each store's reset() so we don't leak subscriptions to
+            // signed-out users either.
+            if case .signedIn = newValue, let route = pendingDeepLink {
+                // Auth landed and an external trigger asked for a route
+                // earlier. Consume the pending target.
+                pendingDeepLink = nil
+                nav.push(route)
+            }
+            if case .signedOut = newValue {
+                // Synchronous resets first — these clear @Observable
+                // state that views are reading right now.
+                bookings.reset()
+                payments.reset()
+                profile.reset()
+                artistDetail.reset()
+                contracts.reset()
+                invitations.reset()
+                roster.reset()
+                // Routes that referenced the previous user's data are
+                // no longer valid; drop them and land on Home.
+                nav.clearStack()
+                nav.setTab(.home)
+                // Async resets — tear down realtime channels. These
+                // run on MainActor; the await is just for the
+                // unsubscribe network call.
+                Task {
+                    await inbox.reset()
+                    await notifications.reset()
+                    await timeline.reset()
+                }
+            }
+        }
+        .onChange(of: scenePhase) { old, new in
+            // Refresh stale data when the app comes back to the
+            // foreground. We only kick the user-scoped lists; design
+            // system / network mocks / one-shot fetches don't need it.
+            // The store-internal `inFlight` guard prevents duplicate
+            // fetches if the user opens the app, switches a tab, then
+            // backgrounds and re-foregrounds in quick succession.
+            guard old != .active, new == .active else { return }
+            guard let userID = auth.currentUserID else { return }
+            bookings.refresh(for: userID, role: nav.role)
+            inbox.refresh(for: userID)
+            notifications.refresh(for: userID)
+            payments.refresh(for: userID)
+            // Resync push permission too — user may have toggled it in
+            // Settings while the app was backgrounded.
+            Task { await push.refreshAuthorization() }
         }
     }
 }

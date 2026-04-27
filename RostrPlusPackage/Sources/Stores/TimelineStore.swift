@@ -12,8 +12,11 @@
 
 import Foundation
 import Observation
+import OSLog
 import Supabase
 import Realtime
+
+private let log = Logger(subsystem: "io.rosterplus.app", category: "TimelineStore")
 
 /// Display shape. Kind is normalised from the server-side string so
 /// the view layer can exhaustively switch on it.
@@ -60,6 +63,14 @@ public final class TimelineStore {
 
     public init() {}
 
+    /// Unsubscribe and drop all cached timelines. Called on sign-out so
+    /// the next user doesn't replay the previous user's events.
+    public func reset() async {
+        await unsubscribe()
+        inFlight.removeAll()
+        eventsByBooking.removeAll()
+    }
+
     // MARK: — Fetch
 
     /// Pull the full timeline for a booking. Idempotent — if we already
@@ -85,7 +96,7 @@ public final class TimelineStore {
             } catch {
                 // Leave cache untouched — view falls back to empty list.
                 #if DEBUG
-                print("TimelineStore.fetch failed:", error)
+                log.error("fetch failed: \(error.localizedDescription, privacy: .public)")
                 #endif
             }
         }
@@ -125,7 +136,7 @@ public final class TimelineStore {
         do {
             try await channel.subscribeWithError()
         } catch {
-            print("TimelineStore.subscribe failed:", error)
+            log.error("subscribe failed: \(error.localizedDescription, privacy: .public)")
         }
         activeChannel = channel
         activeSubscription = subscription
@@ -160,7 +171,7 @@ public final class TimelineStore {
             eventsByBooking[bookingID] = current
         } catch {
             #if DEBUG
-            print("TimelineStore.handleInsert decode failed:", error)
+            log.error("handleInsert decode failed: \(error.localizedDescription, privacy: .public)")
             #endif
         }
     }

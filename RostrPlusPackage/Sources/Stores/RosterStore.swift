@@ -45,6 +45,17 @@ public final class RosterStore {
 
     public init() {}
 
+    /// Reset filters and cancel any in-flight fetch on sign-out. The
+    /// roster itself is public-ish, but search + filter state is
+    /// user-scoped UX and should not persist into the next session.
+    public func reset() {
+        inFlight?.cancel()
+        inFlight = nil
+        search = ""
+        genreFilter = "All"
+        state = .idle
+    }
+
     // MARK: — Fetch
 
     public func refresh() {

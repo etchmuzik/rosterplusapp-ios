@@ -14,7 +14,10 @@
 
 import Foundation
 import Observation
+import OSLog
 import Supabase
+
+private let log = Logger(subsystem: "io.rosterplus.app", category: "InvitationsStore")
 
 public struct InvitationRow: Identifiable, Hashable, Sendable {
     public let id: UUID
@@ -43,6 +46,13 @@ public final class InvitationsStore {
     private let webOrigin = "https://rosterplus.io"
 
     public init() {}
+
+    /// Drop cached invitations and any pending result. Called on
+    /// sign-out so the next signed-in promoter starts fresh.
+    public func reset() {
+        sendResult = .idle
+        recent = []
+    }
 
     // MARK: — Send
 
@@ -133,7 +143,7 @@ public final class InvitationsStore {
                 // Email dispatch failure is non-fatal — the invitation
                 // row is in the database, so an admin can resend later.
                 #if DEBUG
-                print("InvitationsStore.send email step failed:", error)
+                log.error("send email step failed: \(error.localizedDescription, privacy: .public)")
                 #endif
             }
 
@@ -151,10 +161,6 @@ public final class InvitationsStore {
         } catch {
             sendResult = .failed(error.localizedDescription)
         }
-    }
-
-    public func reset() {
-        sendResult = .idle
     }
 
     // MARK: — Read

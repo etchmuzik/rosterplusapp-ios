@@ -17,7 +17,7 @@ public struct PaymentRow: Identifiable, Hashable, Sendable {
     public let id: UUID
     public let artistName: String
     public let eventLabel: String
-    public let amount: Double
+    public let amount: Decimal
     public let currency: String
     public let amountFormatted: String
     public let status: Status
@@ -47,6 +47,15 @@ public final class PaymentsStore {
     private var inFlight: Task<Void, Never>?
 
     public init() {}
+
+    /// Drop all cached rows and cancel any in-flight fetch. Called on
+    /// sign-out so the next signed-in user starts from a clean slate.
+    public func reset() {
+        inFlight?.cancel()
+        inFlight = nil
+        items = []
+        state = .idle
+    }
 
     // MARK: — Fetch
 
@@ -83,27 +92,20 @@ public final class PaymentsStore {
     public var pending: [PaymentRow]   { items.filter { $0.status == .pending   } }
     public var scheduled: [PaymentRow] { items.filter { $0.status == .scheduled } }
 
-    public var monthTotal: Double {
+    public var monthTotal: Decimal {
         let cal = Calendar.current
         let now = Date()
         let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? now
         return items
             .filter { ($0.paidAt ?? $0.eventDate ?? .distantPast) >= monthStart }
-            .reduce(0) { $0 + $1.amount }
+            .reduce(Decimal(0)) { $0 + $1.amount }
     }
 
     // MARK: — Helpers
 
     private static func rowFromDTO(_ dto: PaymentDTO) -> PaymentRow {
         let ccy = dto.currency ?? "AED"
-        let amountFormatted: String = {
-            if dto.amount >= 1000 {
-                let thousands = dto.amount / 1000
-                let isWhole = thousands.truncatingRemainder(dividingBy: 1) == 0
-                return "\(ccy) \(isWhole ? "\(Int(thousands))" : String(format: "%.1f", thousands))K"
-            }
-            return "\(ccy) \(Int(dto.amount))"
-        }()
+        let amountFormatted = MoneyFormatter.compact(dto.amount, currency: ccy)
         let eventLabel: String = {
             let venue = dto.booking?.venueName ?? dto.booking?.eventName ?? "Event"
             if let d = dto.booking?.eventDate {

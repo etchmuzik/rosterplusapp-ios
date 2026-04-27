@@ -11,8 +11,11 @@
 
 import Foundation
 import Observation
+import OSLog
 import Supabase
 import Realtime
+
+private let log = Logger(subsystem: "io.rosterplus.app", category: "InboxStore")
 
 /// Display shape for the inbox list (one row per conversation).
 public struct InboxThread: Identifiable, Hashable, Sendable {
@@ -67,6 +70,22 @@ public final class InboxStore {
     private var subscription: RealtimeSubscription?
 
     public init() {}
+
+    /// Drop cached threads, unsubscribe from realtime, cancel any
+    /// in-flight fetch. Called on sign-out so the next signed-in user
+    /// starts from a clean slate and doesn't receive the previous
+    /// user's realtime messages.
+    public func reset() async {
+        inFlight?.cancel()
+        inFlight = nil
+        if let ch = channel { await ch.unsubscribe() }
+        channel = nil
+        subscription = nil
+        currentUserID = nil
+        messages = []
+        profileNames = [:]
+        state = .idle
+    }
 
     // MARK: — Fetch
 
@@ -140,7 +159,7 @@ public final class InboxStore {
         do {
             try await ch.subscribeWithError()
         } catch {
-            print("InboxStore.subscribeRealtime failed:", error)
+            log.error("subscribeRealtime failed: \(error.localizedDescription, privacy: .public)")
         }
         self.channel = ch
         self.subscription = sub
@@ -179,7 +198,7 @@ public final class InboxStore {
             }
         } catch {
             #if DEBUG
-            print("InboxStore.handleInboundInsert decode failed:", error)
+            log.error("handleInboundInsert decode failed: \(error.localizedDescription, privacy: .public)")
             #endif
         }
     }
@@ -318,7 +337,7 @@ public final class InboxStore {
                 // Silently swallow — the optimistic row stays. A real
                 // app would flag the row as failed; for now we log.
                 #if DEBUG
-                print("InboxStore.send failed:", error)
+                log.error("send failed: \(error.localizedDescription, privacy: .public)")
                 #endif
             }
         }

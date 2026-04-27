@@ -6,8 +6,11 @@
 
 import Foundation
 import Observation
+import OSLog
 import Supabase
 import Realtime
+
+private let log = Logger(subsystem: "io.rosterplus.app", category: "NotificationsStore")
 
 /// Display shape for a notification row. Maps server-side `type` onto
 /// a small enum the view switches on for icon + tint.
@@ -48,6 +51,20 @@ public final class NotificationsStore {
     private var subscription: RealtimeSubscription?
 
     public init() {}
+
+    /// Drop cached rows, unsubscribe from realtime, cancel any in-flight
+    /// fetch. Called on sign-out so the next signed-in user doesn't see
+    /// the previous user's notifications or receive their realtime
+    /// inserts.
+    public func reset() async {
+        inFlight?.cancel()
+        inFlight = nil
+        if let ch = channel { await ch.unsubscribe() }
+        channel = nil
+        subscription = nil
+        items = []
+        state = .idle
+    }
 
     // MARK: — Fetch
 
@@ -96,7 +113,7 @@ public final class NotificationsStore {
         do {
             try await ch.subscribeWithError()
         } catch {
-            print("NotificationsStore.subscribeRealtime failed:", error)
+            log.error("subscribeRealtime failed: \(error.localizedDescription, privacy: .public)")
         }
         self.channel = ch
         self.subscription = sub
@@ -112,7 +129,7 @@ public final class NotificationsStore {
             items.insert(row, at: 0)
         } catch {
             #if DEBUG
-            print("NotificationsStore.handleInsert decode failed:", error)
+            log.error("handleInsert decode failed: \(error.localizedDescription, privacy: .public)")
             #endif
         }
     }

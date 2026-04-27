@@ -18,7 +18,7 @@ public struct ArtistDetail: Identifiable, Hashable, Sendable {
     public let stageName: String
     public let genres: [String]
     public let citiesActive: [String]
-    public let baseFee: Double?
+    public let baseFee: Decimal?
     public let currency: String
     public let rating: Double
     public let totalBookings: Int
@@ -41,7 +41,7 @@ public struct ArtistDetail: Identifiable, Hashable, Sendable {
         stageName: String,
         genres: [String],
         citiesActive: [String],
-        baseFee: Double?,
+        baseFee: Decimal?,
         currency: String,
         rating: Double,
         totalBookings: Int,
@@ -101,6 +101,17 @@ public final class ArtistDetailStore {
     private var inFlight: Set<UUID> = []
 
     public init() {}
+
+    /// Drop cached artist rows and the resolved my-artist id. Called on
+    /// sign-out so the next signed-in user resolves their own artist
+    /// row rather than reusing the previous user's.
+    public func reset() {
+        inFlight.removeAll()
+        cache.removeAll()
+        myArtistID = nil
+        lastError = nil
+        state = .idle
+    }
 
     // MARK: — My artist id
 
@@ -334,7 +345,7 @@ public final class ArtistDetailStore {
 
     /// Persist a new base_fee on public.artists. Caller passes the raw
     /// fee (e.g. 28_000, not 28K).
-    public func updateBaseFee(_ fee: Double, for artistID: UUID) async {
+    public func updateBaseFee(_ fee: Decimal, for artistID: UUID) async {
         lastError = nil
         if let existing = cache[artistID] {
             let merged = Self.withBaseFee(existing, fee: fee)
@@ -343,11 +354,17 @@ public final class ArtistDetailStore {
                 state = .loaded(merged)
             }
         }
+        // PostgREST round-trips numerics as JSON numbers; serialise via
+        // NSDecimalNumber → Double for the wire because Decimal isn't
+        // directly Encodable to a JSON number. The canonical column is
+        // numeric on the server, so fractional cents survive intact at
+        // the values we deal with (≤ AED 1M, well within Double's
+        // precision).
         struct Patch: Encodable { let base_fee: Double }
         do {
             _ = try await client
                 .from("artists")
-                .update(Patch(base_fee: fee))
+                .update(Patch(base_fee: NSDecimalNumber(decimal: fee).doubleValue))
                 .eq("id", value: artistID)
                 .execute()
         } catch {
@@ -413,7 +430,7 @@ public final class ArtistDetailStore {
         )
     }
 
-    private static func withBaseFee(_ d: ArtistDetail, fee: Double) -> ArtistDetail {
+    private static func withBaseFee(_ d: ArtistDetail, fee: Decimal) -> ArtistDetail {
         ArtistDetail(
             id: d.id, stageName: d.stageName, genres: d.genres,
             citiesActive: d.citiesActive, baseFee: fee,

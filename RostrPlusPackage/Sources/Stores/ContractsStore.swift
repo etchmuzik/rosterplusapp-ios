@@ -69,6 +69,15 @@ public final class ContractsStore {
 
     public init() {}
 
+    /// Drop cached contracts. Called on sign-out so the next signed-in
+    /// user doesn't see the previous user's contracts.
+    public func reset() {
+        inFlight.removeAll()
+        cache.removeAll()
+        lastError = nil
+        state = .idle
+    }
+
     // MARK: — Fetch
 
     /// Pull the contract belonging to a booking. The view passes the

@@ -33,6 +33,15 @@ public final class ProfileStore {
 
     public init() {}
 
+    /// Wipe the profile and cancel any in-flight fetch. Called on
+    /// sign-out so the next signed-in user starts from a clean slate.
+    public func reset() {
+        inFlight?.cancel()
+        inFlight = nil
+        lastError = nil
+        state = .idle
+    }
+
     // MARK: — Read
 
     public var current: ProfileDTO? {
