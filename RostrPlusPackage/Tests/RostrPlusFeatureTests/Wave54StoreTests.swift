@@ -46,31 +46,37 @@ struct ProfileStoreTests {
         #expect(store.current?.displayName == "Seed")
     }
 
-    // FIXME: these two tests assume the optimistic-update branch survives
-    // an awaited round-trip, but ProfileStore.update rolls back to the
-    // pre-update state on network failure (which is exactly what happens
-    // in the test environment — there's no live Supabase auth). They were
-    // green only when the test sim had no network and the call hung.
-    // Left disabled until ProfileStore takes an injected client we can mock.
-    @Test("update(bio:) optimistically patches state.loaded",
-          .disabled("Needs injectable client — currently rolls back on real-network failure"))
+    @Test("update(bio:) optimistically patches state.loaded")
     func optimisticBioUpdate() async {
-        let store = ProfileStore()
+        let store = ProfileStore(writer: NoopProfileWriter())
         let id = UUID()
         store._testLoad(dto(id: id, displayName: "A", bio: "old"))
         await store.update(userID: id, bio: "new")
+        // Optimistic flip happens synchronously, the awaited write
+        // succeeds via the no-op writer, state stays on the new bio.
         #expect(store.current?.bio == "new")
     }
 
-    @Test("update() leaves untouched fields alone",
-          .disabled("Needs injectable client — currently rolls back on real-network failure"))
+    @Test("update() leaves untouched fields alone")
     func updateIsPartial() async {
-        let store = ProfileStore()
+        let store = ProfileStore(writer: NoopProfileWriter())
         let id = UUID()
         store._testLoad(dto(id: id, displayName: "Alex", bio: "keep"))
         await store.update(userID: id, displayName: "Alexander")
         #expect(store.current?.displayName == "Alexander")
         #expect(store.current?.bio == "keep")
+    }
+
+    @Test("update() rolls back on writer failure")
+    func rollbackOnFailure() async {
+        let store = ProfileStore(writer: FailingProfileWriter())
+        let id = UUID()
+        store._testLoad(dto(id: id, displayName: "Alex", bio: "old"))
+        await store.update(userID: id, bio: "new")
+        // Optimistic flip happens, writer throws, state rolls back and
+        // lastError is populated.
+        #expect(store.current?.bio == "old")
+        #expect(store.lastError != nil)
     }
 }
 

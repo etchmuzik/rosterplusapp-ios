@@ -61,14 +61,9 @@ struct ProfileStoreAvatarTests {
         )
     }
 
-    // FIXME: same rollback issue as Wave54StoreTests.optimisticBioUpdate.
-    // updateAvatarURL flips the optimistic state but rolls back on a
-    // failed network call, which is what we get without a live session
-    // in tests. Disabled until we inject a mock client.
-    @Test("updateAvatarURL optimistically flips the loaded state",
-          .disabled("Needs injectable client — currently rolls back on real-network failure"))
+    @Test("updateAvatarURL optimistically flips the loaded state")
     func optimisticAvatarFlip() async {
-        let store = ProfileStore()
+        let store = ProfileStore(writer: NoopProfileWriter())
         let seed = dto(avatar: nil)
         store._testLoad(seed)
         await store.updateAvatarURL("https://cdn.rostrplus.io/avatar.jpg", userID: seed.id)

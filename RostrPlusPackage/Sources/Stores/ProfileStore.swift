@@ -11,6 +11,38 @@ import Foundation
 import Observation
 import Supabase
 
+/// Narrow seam for the writes ProfileStore performs against
+/// public.profiles. Production wires a Supabase-backed impl that PATCHes
+/// the row; tests inject a no-op (or a faulty one) so the optimistic
+/// update branch can be observed without a live session.
+///
+/// Reads stay on the singleton — they go through the same RLS gate and
+/// a stale cache test wouldn't add anything.
+public protocol ProfileWriter: Sendable {
+    /// PATCH /profiles?id=eq.<userID> with the encoded payload. Throws
+    /// on any non-2xx — callers swallow the throw and roll back.
+    func patchProfile<Patch: Encodable & Sendable>(
+        _ patch: Patch, userID: UUID
+    ) async throws
+}
+
+/// Default impl that hits the live Supabase project. Wraps
+/// RostrSupabase.shared so consumers that don't pass a writer see the
+/// same behaviour as before this seam was added.
+public struct SupabaseProfileWriter: ProfileWriter {
+    public init() {}
+
+    public func patchProfile<Patch: Encodable & Sendable>(
+        _ patch: Patch, userID: UUID
+    ) async throws {
+        _ = try await RostrSupabase.shared
+            .from("profiles")
+            .update(patch)
+            .eq("id", value: userID)
+            .execute()
+    }
+}
+
 @Observable
 @MainActor
 public final class ProfileStore {
@@ -29,9 +61,12 @@ public final class ProfileStore {
     public private(set) var lastError: String?
 
     private let client = RostrSupabase.shared
+    private let writer: any ProfileWriter
     private var inFlight: Task<Void, Never>?
 
-    public init() {}
+    public init(writer: any ProfileWriter = SupabaseProfileWriter()) {
+        self.writer = writer
+    }
 
     /// Wipe the profile and cancel any in-flight fetch. Called on
     /// sign-out so the next signed-in user starts from a clean slate.
@@ -96,13 +131,9 @@ public final class ProfileStore {
         )
         state = .loaded(optimistic)
 
-        struct Patch: Encodable { let avatar_url: String }
+        struct Patch: Encodable, Sendable { let avatar_url: String }
         do {
-            _ = try await client
-                .from("profiles")
-                .update(Patch(avatar_url: url))
-                .eq("id", value: userID)
-                .execute()
+            try await writer.patchProfile(Patch(avatar_url: url), userID: userID)
         } catch {
             lastError = error.localizedDescription
             state = .loaded(existing)
@@ -137,7 +168,7 @@ public final class ProfileStore {
         )
         state = .loaded(optimistic)
 
-        struct Patch: Encodable {
+        struct Patch: Encodable, Sendable {
             let display_name: String?
             let phone: String?
             let company: String?
@@ -153,11 +184,7 @@ public final class ProfileStore {
         )
 
         do {
-            _ = try await client
-                .from("profiles")
-                .update(patch)
-                .eq("id", value: userID)
-                .execute()
+            try await writer.patchProfile(patch, userID: userID)
         } catch {
             lastError = error.localizedDescription
             // Rollback to server truth on failure.
@@ -172,13 +199,9 @@ public final class ProfileStore {
     /// re-prompted on the other. Fire-and-forget; surface failures via
     /// `lastError` but don't block the calling flow.
     public func markOnboardingComplete(userID: UUID) async {
-        struct Patch: Encodable { let onboarding_complete: Bool }
+        struct Patch: Encodable, Sendable { let onboarding_complete: Bool }
         do {
-            _ = try await client
-                .from("profiles")
-                .update(Patch(onboarding_complete: true))
-                .eq("id", value: userID)
-                .execute()
+            try await writer.patchProfile(Patch(onboarding_complete: true), userID: userID)
         } catch {
             lastError = error.localizedDescription
         }
