@@ -72,8 +72,12 @@ public final class AnalyticsStore {
             guard let fee = b.fee, fee > 0 else { continue }
             guard let target = cal.date(from: cal.dateComponents([.year, .month], from: b.eventDate)) else { continue }
             if let idx = buckets.firstIndex(where: { $0.0 == target }) {
-                // Values shown in thousands for visual headroom.
-                buckets[idx].2 += fee / 1000
+                // Values shown in thousands for visual headroom. Bucket
+                // is Double for chart rendering — Decimal would be over-
+                // engineering here (the chart can't show >2-decimal
+                // precision and the totals are tens of thousands at most).
+                let thousands = NSDecimalNumber(decimal: fee).doubleValue / 1000
+                buckets[idx].2 += thousands
             }
         }
 
@@ -108,8 +112,8 @@ public final class AnalyticsStore {
     public var topArtists: [TopArtist] {
         let grouped = Dictionary(grouping: allBookings, by: \.artistName)
         let tops = grouped
-            .map { (stage, rows) -> (String, Int, Double, String) in
-                let total = rows.reduce(0.0) { $0 + ($1.fee ?? 0) }
+            .map { (stage, rows) -> (String, Int, Decimal, String) in
+                let total: Decimal = rows.reduce(Decimal(0)) { $0 + ($1.fee ?? 0) }
                 let ccy = rows.first?.currency ?? "AED"
                 return (stage, rows.count, total, ccy)
             }
@@ -120,13 +124,7 @@ public final class AnalyticsStore {
             .prefix(4)
 
         return tops.map { stage, count, total, ccy in
-            let formatted: String = {
-                if total >= 1000 {
-                    let thousands = total / 1000
-                    return "\(ccy) \(Int(thousands))K"
-                }
-                return "\(ccy) \(Int(total))"
-            }()
+            let formatted = MoneyFormatter.compact(total, currency: ccy)
             return TopArtist(stage: stage, bookings: count, totalFee: formatted)
         }
     }

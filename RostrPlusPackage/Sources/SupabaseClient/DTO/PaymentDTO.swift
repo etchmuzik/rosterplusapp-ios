@@ -12,7 +12,7 @@ import Foundation
 public struct PaymentDTO: Codable, Hashable, Sendable, Identifiable {
     public let id: UUID
     public let bookingID: UUID?
-    public let amount: Double
+    public let amount: Decimal
     public let currency: String?
     public let type: String?
     public let status: String?

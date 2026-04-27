@@ -22,7 +22,7 @@ struct BookingsStoreTests {
         venue: String = "Venue",
         date: Date,
         status: String = "confirmed",
-        fee: Double? = 10_000,
+        fee: Decimal? = 10_000,
         currency: String = "AED"
     ) -> BookingRow {
         BookingRow(
@@ -32,7 +32,7 @@ struct BookingsStoreTests {
             venueName: venue,
             eventDate: date,
             status: status,
-            feeFormatted: "\(currency) \(Int(fee ?? 0))",
+            feeFormatted: "\(currency) \(NSDecimalNumber(decimal: fee ?? 0).intValue)",
             currency: currency,
             fee: fee
         )

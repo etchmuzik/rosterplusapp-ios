@@ -15,7 +15,7 @@ public struct ArtistDTO: Codable, Hashable, Sendable, Identifiable {
     public let stageName: String?
     public let genre: [String]?
     public let citiesActive: [String]?
-    public let baseFee: Double?
+    public let baseFee: Decimal?
     public let currency: String?
     public let rating: Double?
     public let totalBookings: Int?

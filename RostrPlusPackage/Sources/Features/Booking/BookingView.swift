@@ -303,7 +303,13 @@ public struct BookingView: View {
             event_date: dateFormatter.string(from: eventDate),
             event_time: timeFormatter.string(from: eventTime),
             venue_name: venue.isEmpty ? nil : venue,
-            fee: Double(fee.replacingOccurrences(of: ",", with: "")),
+            // Parse via Decimal so user input like "28,500.50" survives
+            // through to the JSON encoder without binary-floating-point
+            // rounding. Wire format is JSON number, hence the final
+            // Decimal → Double conversion (lossless within our value
+            // ceiling of low-millions in any GCC currency).
+            fee: Decimal(string: fee.replacingOccurrences(of: ",", with: ""))
+                .map { NSDecimalNumber(decimal: $0).doubleValue },
             currency: currency,
             status: "inquiry"
         )

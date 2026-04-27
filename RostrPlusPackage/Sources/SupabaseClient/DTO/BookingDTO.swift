@@ -19,7 +19,7 @@ public struct BookingDTO: Codable, Hashable, Sendable, Identifiable {
     public let eventTime: String?
     public let setDuration: Int?
     public let status: String?
-    public let fee: Double?
+    public let fee: Decimal?
     public let currency: String?
     public let venueName: String?
     public let notes: String?

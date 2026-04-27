@@ -123,13 +123,14 @@ struct PaymentsStoreTests {
 
     private func row(
         status: PaymentRow.Status,
-        amount: Double = 10_000,
+        amount: Decimal = 10_000,
         ccy: String = "AED",
         paidAt: Date? = nil
     ) -> PaymentRow {
         PaymentRow(
             id: UUID(), artistName: "A", eventLabel: "E",
-            amount: amount, currency: ccy, amountFormatted: "\(ccy) \(Int(amount))",
+            amount: amount, currency: ccy,
+            amountFormatted: "\(ccy) \(NSDecimalNumber(decimal: amount).intValue)",
             status: status, eventDate: Date(), paidAt: paidAt
         )
     }
@@ -174,12 +175,12 @@ struct PaymentsStoreTests {
 @Suite("AnalyticsStore")
 struct AnalyticsStoreTests {
 
-    private func booking(artist: String, fee: Double, offsetDays: Int, ccy: String = "AED") -> BookingRow {
+    private func booking(artist: String, fee: Decimal, offsetDays: Int, ccy: String = "AED") -> BookingRow {
         BookingRow(
             id: UUID(), eventName: "E", artistName: artist, venueName: "V",
             eventDate: Date().addingTimeInterval(Double(offsetDays) * 86_400),
             status: "confirmed",
-            feeFormatted: "\(ccy) \(Int(fee))", currency: ccy, fee: fee
+            feeFormatted: "\(ccy) \(NSDecimalNumber(decimal: fee).intValue)", currency: ccy, fee: fee
         )
     }
 

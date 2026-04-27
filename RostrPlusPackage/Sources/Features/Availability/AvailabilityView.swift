@@ -82,7 +82,10 @@ public struct AvailabilityView: View {
         }
         blockedDates = detail.blockedDates
         if let fee = detail.baseFee, fee >= 5_000, fee <= 80_000 {
-            baseFeeK = fee / 1000
+            // Slider value lives in Double for SwiftUI; the precision
+            // hop here is harmless (≤ 80,000, far below Double's exact
+            // integer range).
+            baseFeeK = NSDecimalNumber(decimal: fee).doubleValue / 1000
         }
         tourMode = detail.tourMode
     }
@@ -108,7 +111,7 @@ public struct AvailabilityView: View {
             #endif
             return
         }
-        await artistStore.updateBaseFee(baseFeeK * 1000, for: artistID)
+        await artistStore.updateBaseFee(Decimal(baseFeeK * 1000), for: artistID)
         if let err = artistStore.lastError {
             errorMessage = err
             #if canImport(UIKit)
