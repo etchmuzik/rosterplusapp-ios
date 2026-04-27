@@ -143,9 +143,15 @@ public struct BellIcon: View {
         // SF Symbol is fine here — the JSX draws a plain bell which
         // matches bell.fill / bell exactly. Chose outline for a-a
         // consistency with other tab icons.
+        //
+        // Marked accessibilityHidden because every callsite wraps this
+        // in a Button with its own .accessibilityLabel ("Notifications",
+        // etc.). Without this VoiceOver double-announces "bell, button"
+        // followed by the parent's label.
         Image(systemName: "bell")
             .font(.system(size: size, weight: .regular))
             .foregroundStyle(color)
+            .accessibilityHidden(true)
     }
 }
 
@@ -159,6 +165,7 @@ public struct ChevronRightIcon: View {
         Image(systemName: "chevron.right")
             .font(.system(size: size, weight: .medium))
             .foregroundStyle(color)
+            .accessibilityHidden(true)
     }
 }
 
@@ -172,5 +179,6 @@ public struct ChartIcon: View {
         Image(systemName: "chart.bar")
             .font(.system(size: size, weight: .regular))
             .foregroundStyle(color)
+            .accessibilityHidden(true)
     }
 }

@@ -23,6 +23,9 @@
 // R is declared in Colors.swift. This file only adds the R.F namespace.
 import SwiftUI
 import CoreText
+import OSLog
+
+private let log = Logger(subsystem: "io.rosterplus.app", category: "DesignSystem.Typography")
 
 public extension R {
     enum F {
@@ -150,9 +153,7 @@ public extension R.F {
             for weight in fam.weights {
                 let name = "\(fam.family)-\(weight)"
                 guard let url = bundle.url(forResource: name, withExtension: fam.ext) else {
-                    #if DEBUG
-                    print("[DesignSystem] Missing font file: \(name).\(fam.ext)")
-                    #endif
+                    log.warning("Missing font file: \(name, privacy: .public).\(fam.ext, privacy: .public)")
                     continue
                 }
                 var errorRef: Unmanaged<CFError>?

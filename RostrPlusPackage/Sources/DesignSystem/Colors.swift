@@ -48,7 +48,13 @@ public enum R {
         public static let fg2 = Color(white: 1.0, opacity: 0.62)
 
         /// Tertiary — metadata, timestamps, dimmed states.
-        public static let fg3 = Color(white: 1.0, opacity: 0.38)
+        ///
+        /// Bumped from 0.38 → 0.48 (2026-04-27) to clear WCAG AA's
+        /// 4.5:1 contrast threshold against `bg0`. Brand language
+        /// stays — fg3 is still visibly subdued vs fg2 (0.62) and fg1
+        /// (0.96) — but VoiceOver-grade users no longer struggle with
+        /// timestamps and "AED 28K" labels rendered in fg3.
+        public static let fg3 = Color(white: 1.0, opacity: 0.48)
 
         // MARK: Status accents
         //

@@ -13,7 +13,12 @@ public enum RostrSupabase {
 
     /// Project ref for "roster new" — see the web app's `assets/js/app.js`
     /// for the matching URL + key. Anon key is public by design.
-    private static let url = URL(string: "https://vgjmfpryobsuboukbemr.supabase.co")!
+    private static let url: URL = {
+        guard let u = URL(string: "https://vgjmfpryobsuboukbemr.supabase.co") else {
+            preconditionFailure("Hardcoded Supabase URL literal is malformed — fix the constant above.")
+        }
+        return u
+    }()
 
     /// Anon key. Safe to ship — Row Level Security enforces row-level
     /// access server-side; clients can't bypass RLS by inspecting this.

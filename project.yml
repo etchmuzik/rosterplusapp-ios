@@ -14,7 +14,7 @@ options:
   bundleIdPrefix: io.rosterplus
   createIntermediateGroups: true
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "18.0"
   # Generate fresh on each run so stale in-memory state doesn't leak
   # between generations.
   generateEmptyDirectories: false
@@ -43,7 +43,7 @@ targets:
   RostrPlus:
     type: application
     platform: iOS
-    deploymentTarget: "17.0"
+    deploymentTarget: "18.0"
     sources:
       - path: RostrPlus
     dependencies:
@@ -86,7 +86,7 @@ targets:
   RostrPlusUITests:
     type: bundle.ui-testing
     platform: iOS
-    deploymentTarget: "17.0"
+    deploymentTarget: "18.0"
     sources:
       - path: RostrPlusUITests
     dependencies:

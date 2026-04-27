@@ -11,7 +11,10 @@
 
 import Foundation
 import Observation
+import OSLog
 import Supabase
+
+private let log = Logger(subsystem: "io.rosterplus.app", category: "AvailabilityCheckStore")
 
 public struct AvailabilityResult: Hashable, Sendable {
     public let available: Bool
@@ -88,7 +91,7 @@ public final class AvailabilityCheckStore {
                 // reject a truly conflicting insert.
                 self.results[key] = AvailabilityResult(available: true, reason: nil)
                 #if DEBUG
-                print("AvailabilityCheckStore.check failed:", error)
+                log.error("check failed: \(error.localizedDescription, privacy: .public)")
                 #endif
             }
         }
