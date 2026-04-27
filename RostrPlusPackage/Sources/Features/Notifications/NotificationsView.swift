@@ -16,6 +16,7 @@ import UIKit
 public struct NotificationsView: View {
     @Bindable var nav: NavigationModel
     @Environment(NotificationsStore.self) private var store
+    @Environment(AuthStore.self) private var auth
 
     public init(nav: NavigationModel) {
         self.nav = nav
@@ -55,6 +56,10 @@ public struct NotificationsView: View {
                 }
                 .padding(.horizontal, R.S.lg)
                 .padding(.top, R.S.xs)
+            }
+            .refreshable {
+                guard let userID = auth.currentUserID else { return }
+                store.refresh(for: userID)
             }
         }
         .background(R.C.bg0)
@@ -152,21 +157,11 @@ public struct NotificationsView: View {
         }
     }
 
-    /// Parse the href the edge function wrote into the notification.
-    /// Shape on the server is always `/bookings/<uuid>`, `/threads/<uuid>`,
-    /// `/contracts/<uuid>`, `/invoices/<uuid>`, `/reviews/<uuid>`.
+    /// Thin wrapper around `Route.parse(href:)` so existing callsites
+    /// don't need to change. Server hrefs share the shape used by
+    /// universal links and APNs payloads.
     private func destination(from href: String) -> Route? {
-        let parts = href.split(separator: "/").map(String.init)
-        guard parts.count >= 2 else { return nil }
-        let id = parts.last ?? ""
-        switch parts[0] {
-        case "bookings":  return .bookingDetail(bookingID: id)
-        case "threads":   return .thread(threadID: id)
-        case "contracts": return .contract(contractID: id)
-        case "invoices":  return .invoice(bookingID: id)
-        case "reviews":   return .review(bookingID: id)
-        default:          return nil
-        }
+        Route.parse(href: href)
     }
 }
 

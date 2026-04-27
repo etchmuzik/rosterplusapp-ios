@@ -44,4 +44,58 @@ struct RouteTests {
         #expect(x == y)
         #expect(x.hashValue == y.hashValue)
     }
+
+    @Test("allCases covers every enum case exactly once")
+    func allCasesCoversEnum() {
+        // If a Route case is added without updating CaseIterable.allCases,
+        // tests that depend on it (back-button audit, deep-link parser
+        // round-trip) silently miss the new case. Pinning the count
+        // forces a manual review on every Route addition.
+        #expect(Route.allCases.count == 16)
+        let ids = Route.allCases.map(\.id)
+        #expect(Set(ids).count == ids.count, "Route.allCases must be unique")
+    }
+}
+
+// MARK: - Route.parse(href:)
+
+@Suite("Route.parse(href:)")
+struct RouteParseTests {
+
+    @Test("Maps server hrefs to bookingDetail / thread / contract / invoice / review")
+    func serverHrefShapes() {
+        let id = "550e8400-e29b-41d4-a716-446655440000"
+        #expect(Route.parse(href: "/bookings/\(id)") == .bookingDetail(bookingID: id))
+        #expect(Route.parse(href: "/threads/\(id)") == .thread(threadID: id))
+        #expect(Route.parse(href: "/contracts/\(id)") == .contract(contractID: id))
+        #expect(Route.parse(href: "/invoices/\(id)") == .invoice(bookingID: id))
+        #expect(Route.parse(href: "/reviews/\(id)") == .review(bookingID: id))
+    }
+
+    @Test("Tolerates leading slash, full URL, and bare path")
+    func toleratesShapes() {
+        let id = "abc-123"
+        #expect(Route.parse(href: "bookings/\(id)") == .bookingDetail(bookingID: id))
+        #expect(Route.parse(href: "/bookings/\(id)") == .bookingDetail(bookingID: id))
+        #expect(Route.parse(href: "https://rosterplus.io/bookings/\(id)") == .bookingDetail(bookingID: id))
+        #expect(Route.parse(href: "rostr://bookings/\(id)") == .bookingDetail(bookingID: id))
+    }
+
+    @Test("Maps artist, EPK, notifications shorthand")
+    func artistAndEpkPaths() {
+        let id = "x"
+        #expect(Route.parse(href: "/artists/\(id)") == .artist(artistID: id))
+        #expect(Route.parse(href: "/epks/\(id)") == .epk(artistID: id))
+        #expect(Route.parse(href: "/epk/\(id)") == .epk(artistID: id))
+        #expect(Route.parse(href: "/notifications") == .notifications)
+    }
+
+    @Test("Returns nil for unrecognised paths and missing ids")
+    func rejectsBadInput() {
+        #expect(Route.parse(href: "") == nil)
+        #expect(Route.parse(href: "/") == nil)
+        #expect(Route.parse(href: "/unknown/123") == nil)
+        #expect(Route.parse(href: "/bookings") == nil) // missing id
+        #expect(Route.parse(href: "/bookings/") == nil)
+    }
 }

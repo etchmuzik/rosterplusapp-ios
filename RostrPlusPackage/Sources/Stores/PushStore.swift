@@ -15,10 +15,13 @@
 
 import Foundation
 import Observation
+import OSLog
 #if canImport(UIKit)
 import UIKit
 import UserNotifications
 #endif
+
+private let log = Logger(subsystem: "io.rosterplus.app", category: "PushStore")
 
 @Observable
 @MainActor
@@ -122,7 +125,7 @@ public final class PushStore {
         } catch {
             lastError = error.localizedDescription
             #if DEBUG
-            print("PushStore.register failed:", error)
+            log.error("register failed: \(error.localizedDescription, privacy: .public)")
             #endif
         }
     }
@@ -181,6 +184,37 @@ public final class PushStore {
     public static let registrationFailedNotification = Notification.Name(
         "rostr.push.registrationFailed"
     )
+
+    /// Posted whenever the app should navigate to a specific Route as
+    /// a result of an external trigger (push-notification tap, universal
+    /// link, custom-scheme open). Post `object: Route` and the AppRoot's
+    /// listener will push it onto the nav stack.
+    ///
+    /// This indirection keeps PushStore + the AppDelegate free of any
+    /// NavigationModel dependency — they emit "user wants to land here"
+    /// and AppRoot decides when to honour it (e.g. only after the auth
+    /// state machine settles).
+    public static let routeRequestedNotification = Notification.Name(
+        "rostr.push.routeRequested"
+    )
+
+    /// Extract a Route from an APNs payload. The server fan-out
+    /// (send-push edge function) sets `aps.alert.body` for the OS banner
+    /// and stamps a `data.href` like `"/bookings/<uuid>"` so the iOS
+    /// + web tap handlers share one shape. Returns nil if the payload
+    /// has no actionable href — caller should fall back to the home
+    /// surface.
+    public static func route(fromAPNsPayload payload: [AnyHashable: Any]) -> Route? {
+        if let href = payload["href"] as? String, let route = Route.parse(href: href) {
+            return route
+        }
+        if let data = payload["data"] as? [AnyHashable: Any],
+           let href = data["href"] as? String,
+           let route = Route.parse(href: href) {
+            return route
+        }
+        return nil
+    }
 
     #if DEBUG
     /// Test seam — set the authorization + token without touching UIKit
