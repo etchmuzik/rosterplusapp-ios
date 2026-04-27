@@ -13,15 +13,39 @@
 
 import SwiftUI
 import DesignSystem
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public struct EPKView: View {
     @Bindable var nav: NavigationModel
     @Environment(ArtistDetailStore.self) private var detail
     let artistID: String
 
+    /// Drives the share sheet. Set on tap, cleared by the system when
+    /// the activity controller dismisses.
+    @State private var showingShareSheet = false
+
     public init(nav: NavigationModel, artistID: String) {
         self.nav = nav
         self.artistID = artistID
+    }
+
+    /// Public-facing EPK URL — same shape the web app uses, so links
+    /// shared from iOS open in a browser if the recipient doesn't have
+    /// the app, or deep-link into iOS if they do (handled by AppRoot's
+    /// onOpenURL once associated-domains is configured server-side).
+    private var shareURL: URL? {
+        URL(string: "https://rosterplus.io/epk.html?id=\(artistID)")
+    }
+
+    /// Promotional copy shown alongside the link in the share sheet.
+    /// Falls back to a generic line until ArtistDetail is loaded.
+    private var shareMessage: String {
+        if let artist = loaded {
+            return "\(artist.stageName) on ROSTR+ — book direct via the EPK below."
+        }
+        return "Check out this artist on ROSTR+."
     }
 
     private var resolvedID: UUID? { UUID(uuidString: artistID) }
@@ -35,7 +59,10 @@ public struct EPKView: View {
         VStack(spacing: 0) {
             NavHeader(title: "EPK", onBack: { nav.pop() }) {
                 Button {
-                    // Share sheet — wires to UIActivityViewController in a later wave
+                    #if canImport(UIKit)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    #endif
+                    showingShareSheet = true
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 14, weight: .semibold))
@@ -52,6 +79,7 @@ public struct EPKView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Share EPK")
+                .disabled(shareURL == nil)
             }
             ScrollView {
                 if let artist = loaded {
@@ -80,6 +108,14 @@ public struct EPKView: View {
         .task {
             if let id = resolvedID { detail.fetch(id: id) }
         }
+        #if canImport(UIKit)
+        .sheet(isPresented: $showingShareSheet) {
+            if let url = shareURL {
+                ShareSheet(items: [shareMessage, url])
+                    .presentationDetents([.medium, .large])
+            }
+        }
+        #endif
     }
 
     // MARK: — Cover hero
@@ -120,9 +156,9 @@ public struct EPKView: View {
 
     private func metaRow(_ artist: ArtistDetail) -> some View {
         HStack(spacing: R.S.sm) {
-            MetaTile(label: "Rating",    value: artist.rating > 0 ? String(format: "%.1f", artist.rating) : "—")
             MetaTile(label: "Bookings",  value: "\(artist.totalBookings)")
-            MetaTile(label: "Base fee",  value: artist.baseFee.map { "\(artist.currency) \(Int($0 / 1000))K" } ?? "—")
+            MetaTile(label: "Base fee",  value: artist.baseFee.map { MoneyFormatter.compact($0, currency: artist.currency) } ?? "—")
+            MetaTile(label: "Status",    value: artist.verified ? "Verified" : "—")
         }
     }
 

@@ -88,17 +88,17 @@ public struct ArtistView: View {
     private func factsRow(_ artist: ArtistDetail) -> some View {
         HStack(spacing: R.S.sm) {
             Fact(
-                label: "Rating",
-                value: artist.rating > 0 ? String(format: "%.1f", artist.rating) : "—",
-                icon: "star.fill",
-                iconColor: R.C.amber
-            )
-            Fact(
                 label: "Base fee",
-                value: artist.baseFee.map { "\(artist.currency) \(Int($0 / 1000))K" } ?? "—",
+                value: artist.baseFee.map { MoneyFormatter.compact($0, currency: artist.currency) } ?? "—",
                 icon: nil
             )
             Fact(label: "Bookings", value: "\(artist.totalBookings)", icon: nil)
+            Fact(
+                label: "Status",
+                value: artist.verified ? "Verified" : "Unverified",
+                icon: artist.verified ? "checkmark.seal.fill" : nil,
+                iconColor: artist.verified ? R.C.green : R.C.fg3
+            )
         }
     }
 

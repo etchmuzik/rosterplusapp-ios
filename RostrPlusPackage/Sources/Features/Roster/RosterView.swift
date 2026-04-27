@@ -236,14 +236,6 @@ private struct ArtistCard: View {
                 .tracking(0.5)
                 .foregroundStyle(R.C.fg3)
                 .lineLimit(1)
-            HStack(spacing: 4) {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(R.C.amber)
-                Text(artist.rating > 0 ? String(format: "%.1f", artist.rating) : "—")
-                    .font(R.F.mono(10, weight: .semibold))
-                    .foregroundStyle(R.C.fg2)
-            }
         }
         .padding(R.S.xs)
         .glassSurface(cornerRadius: R.Rad.card, intensity: .soft)
