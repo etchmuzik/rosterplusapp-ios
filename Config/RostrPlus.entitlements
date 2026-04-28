@@ -30,5 +30,18 @@
   <array>
     <string>$(AppIdentifierPrefix)io.rosterplus.app</string>
   </array>
+
+  <!-- Associated Domains — universal links from rosterplus.io into the
+       app. The AASA file at https://rosterplus.io/.well-known/apple-app-site-association
+       is fetched by iOS on first install (and on updates) to learn which
+       paths to intercept. Components map: /bookings/*, /threads/*,
+       /contracts/*, /invoices/*, /reviews/*, /artists/*, /epk(s)/*,
+       /notifications. webcredentials enables Sign-in-with-Apple +
+       password-autofill round-trips with the same domain. -->
+  <key>com.apple.developer.associated-domains</key>
+  <array>
+    <string>applinks:rosterplus.io</string>
+    <string>webcredentials:rosterplus.io</string>
+  </array>
 </dict>
 </plist>

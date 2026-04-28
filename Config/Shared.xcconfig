@@ -28,7 +28,7 @@ SWIFT_STRICT_CONCURRENCY = complete
 // FitTrackApp template mentioned in CLAUDE.md.
 CODE_SIGN_ENTITLEMENTS = Config/RostrPlus.entitlements
 CODE_SIGN_STYLE = Automatic
-DEVELOPMENT_TEAM =
+DEVELOPMENT_TEAM = CHSAVJ5X6U
 
 // ── Build ────────────────────────────────────────────────
 SWIFT_TREAT_WARNINGS_AS_ERRORS = YES

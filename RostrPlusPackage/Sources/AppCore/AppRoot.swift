@@ -153,7 +153,7 @@ public struct AppRoot: View {
                 pendingDeepLink = route
             }
         }
-        .onChange(of: auth.state) { _, newValue in
+        .onChange(of: auth.state) { oldValue, newValue in
             // On sign-out (or session expiry the SDK reports as
             // signedOut), wipe every user-scoped store. Otherwise the
             // next signed-in user briefly sees the previous user's
@@ -168,6 +168,12 @@ public struct AppRoot: View {
                 nav.push(route)
             }
             if case .signedOut = newValue {
+                // Capture the previous user's UUID before any state
+                // wipe so we can scope the device_tokens delete.
+                let previousUserID: UUID? = {
+                    if case .signedIn(let id, _, _) = oldValue { return id }
+                    return nil
+                }()
                 // Synchronous resets first — these clear @Observable
                 // state that views are reading right now.
                 bookings.reset()
@@ -177,17 +183,25 @@ public struct AppRoot: View {
                 contracts.reset()
                 invitations.reset()
                 roster.reset()
+                availabilityCheck.reset()
+                analytics?.reset()
+                push.reset()
                 // Routes that referenced the previous user's data are
                 // no longer valid; drop them and land on Home.
                 nav.clearStack()
                 nav.setTab(.home)
                 // Async resets — tear down realtime channels. These
                 // run on MainActor; the await is just for the
-                // unsubscribe network call.
+                // unsubscribe network call. Also delete the previous
+                // user's device-token row so push fanout doesn't keep
+                // delivering to this device for that account.
                 Task {
                     await inbox.reset()
                     await notifications.reset()
                     await timeline.reset()
+                    if let previousUserID {
+                        await push.clearToken(for: previousUserID)
+                    }
                 }
             }
         }

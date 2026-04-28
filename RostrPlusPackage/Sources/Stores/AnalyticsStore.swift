@@ -45,6 +45,13 @@ public final class AnalyticsStore {
         self.bookings = bookings
     }
 
+    /// No-op for symmetry with the other user-scoped stores. Analytics
+    /// is fully derived from BookingsStore, so resetting BookingsStore
+    /// (which AppRoot does on sign-out) is what actually clears the
+    /// dashboards. This stub exists so future state added here is
+    /// guaranteed to be cleared in the same place.
+    public func reset() {}
+
     private var allBookings: [BookingRow] {
         bookings.upcoming + bookings.past
     }

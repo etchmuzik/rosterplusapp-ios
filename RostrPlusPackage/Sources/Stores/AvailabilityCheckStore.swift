@@ -97,6 +97,17 @@ public final class AvailabilityCheckStore {
         }
     }
 
+    // MARK: — Reset
+
+    /// Drop every cached availability result. Called on sign-out so the
+    /// next signed-in user can't see whether artist X was available on
+    /// date Y from the previous user's session — minor info leak, but
+    /// no reason to keep it once the user is gone.
+    public func reset() {
+        results.removeAll()
+        inFlightKeys.removeAll()
+    }
+
     // MARK: — Helpers
 
     private static func key(artistID: UUID, date: Date) -> String {

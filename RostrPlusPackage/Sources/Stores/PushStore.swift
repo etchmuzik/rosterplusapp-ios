@@ -148,6 +148,20 @@ public final class PushStore {
         }
     }
 
+    /// Drop locally-cached push state. Called on sign-out so user B
+    /// signing in on the same device doesn't inherit user A's
+    /// authorization view or token reference. The server-side
+    /// device_tokens row is removed by `clearToken(for:)` — call that
+    /// first when the previous userID is known, then call `reset()`
+    /// for the symmetric in-memory wipe.
+    public func reset() {
+        lastRegisteredToken = nil
+        lastError = nil
+        // Don't reset `authorization` — the OS-level permission grant
+        // belongs to the device, not the account. Re-querying it on the
+        // next sign-in would just give us the same answer.
+    }
+
     // MARK: — Env
 
     /// Debug builds hit the APNs sandbox, release builds hit production.
