@@ -1,13 +1,7 @@
 // Route.swift
 //
-// Every possible push destination in the app. Mirrors the `kind` strings
-// used by `InteractiveDevice` in ios-app.jsx (line 768-779):
-//
-//   'artist' · 'booking' · 'thread' · 'booking-detail' · 'epk' ·
-//   'contract' · 'notifications' · 'review' · 'claim' · 'availability' ·
-//   'profile-edit' · 'invoice'
-//
-// Payload-carrying cases use associated values; everything else is pure.
+// Every possible push destination in the app. Payload-carrying cases use
+// associated values; everything else is pure.
 
 import Foundation
 
@@ -19,7 +13,6 @@ public enum Route: Hashable, Identifiable, Sendable {
     case epk(artistID: String)
     case contract(contractID: String)
     case notifications
-    case review(bookingID: String)
     case claim
     case availability
     case profileEdit
@@ -38,7 +31,6 @@ public enum Route: Hashable, Identifiable, Sendable {
         case .epk(let id):            return "epk:\(id)"
         case .contract(let id):       return "contract:\(id)"
         case .notifications:          return "notifications"
-        case .review(let id):         return "review:\(id)"
         case .claim:                  return "claim"
         case .availability:           return "availability"
         case .profileEdit:            return "profileEdit"
@@ -68,7 +60,6 @@ extension Route: CaseIterable {
             .epk(artistID: id),
             .contract(contractID: id),
             .notifications,
-            .review(bookingID: id),
             .claim,
             .availability,
             .profileEdit,
@@ -85,7 +76,7 @@ extension Route: CaseIterable {
 
 public extension Route {
     /// Parse a server-issued href ("/bookings/<uuid>", "/threads/<uuid>",
-    /// "/contracts/<uuid>", "/invoices/<uuid>", "/reviews/<uuid>",
+    /// "/contracts/<uuid>", "/invoices/<uuid>",
     /// "/artists/<uuid>", "/epks/<uuid>", "/notifications") into a Route.
     /// Used by:
     ///   - in-app notification taps in NotificationsView
@@ -121,7 +112,6 @@ public extension Route {
         case "threads":       return id.isEmpty ? nil : .thread(threadID: id)
         case "contracts":     return id.isEmpty ? nil : .contract(contractID: id)
         case "invoices":      return id.isEmpty ? nil : .invoice(bookingID: id)
-        case "reviews":       return id.isEmpty ? nil : .review(bookingID: id)
         case "artists":       return id.isEmpty ? nil : .artist(artistID: id)
         case "epks", "epk":   return id.isEmpty ? nil : .epk(artistID: id)
         case "notifications": return .notifications

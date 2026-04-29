@@ -31,7 +31,6 @@ struct NavigationBackAffordanceTests {
         (.epk(artistID: "x"),            "Features/EPK/EPKView.swift"),
         (.contract(contractID: "x"),     "Features/Contract/ContractView.swift"),
         (.notifications,                 "Features/Notifications/NotificationsView.swift"),
-        (.review(bookingID: "x"),        "Features/Review/ReviewView.swift"),
         (.claim,                         "Features/Claim/ClaimView.swift"),
         (.availability,                  "Features/Availability/AvailabilityView.swift"),
         (.profileEdit,                   "Features/ProfileEdit/ProfileEditView.swift"),

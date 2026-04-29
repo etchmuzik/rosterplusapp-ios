@@ -189,7 +189,6 @@ public enum MockData {
         .init(id: "n2", kind: .message,  title: "MIRELA sent a message",         body: "Sending the updated set list by EOD.",                     when: "14m ago",    unread: true),
         .init(id: "n3", kind: .contract, title: "Contract countersigned",        body: "KARIMA-N signed the Cavalli Club agreement.",              when: "1h ago",     unread: false),
         .init(id: "n4", kind: .payment,  title: "Payment scheduled",             body: "AED 32K scheduled for 28 Apr.",                             when: "3h ago",     unread: false),
-        .init(id: "n5", kind: .review,   title: "Rate KARIMA-N",                 body: "Booking wrapped SAT 20. Leave a rating.",                   when: "Yesterday",  unread: false),
         .init(id: "n6", kind: .calendar, title: "Upcoming: 3 gigs this week",    body: "Your calendar fills up fast — check availability.",         when: "Yesterday",  unread: false),
         .init(id: "n7", kind: .profile,  title: "Your profile got 12 views",     body: "Four from Riyadh, eight from Dubai.",                       when: "2d ago",     unread: false)
     ]

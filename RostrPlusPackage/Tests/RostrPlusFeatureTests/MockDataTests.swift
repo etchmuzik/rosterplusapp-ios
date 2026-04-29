@@ -71,11 +71,11 @@ struct MockDataTests {
         }
     }
 
-    @Test("Notifications cover all 7 kinds per README spec")
+    @Test("Notifications cover the live kinds in MockData")
     func notificationKinds() {
         let kinds = Set(MockData.notifications.map(\.kind))
-        let expected: Set<MockNotification.Kind> = [.booking, .message, .payment, .contract, .review, .calendar, .profile]
-        #expect(kinds == expected, "Design system requires all 7 kinds to be represented")
+        let expected: Set<MockNotification.Kind> = [.booking, .message, .payment, .contract, .calendar, .profile]
+        #expect(kinds == expected)
     }
 
     @Test("Notifications have unread + read mix for section split")

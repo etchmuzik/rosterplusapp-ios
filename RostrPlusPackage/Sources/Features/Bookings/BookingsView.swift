@@ -1,13 +1,8 @@
 // BookingsView.swift — Screen 08
 //
-// Bookings list with upcoming + past groups, plus an inline review-
-// prompt banner that appears on recent completed bookings where the
-// promoter hasn't rated the artist yet. Port of `BookingsScreen` at
-// ios-app.jsx line 642.
-//
-// Track 2 pass 2: reads live data from BookingsStore. AppRoot is
-// responsible for the refresh call on sign-in; this view just watches
-// the store's derived `upcoming` + `past` arrays.
+// Bookings list with upcoming + past groups. Reads live data from
+// BookingsStore. AppRoot is responsible for the refresh call on sign-in;
+// this view just watches the store's derived `upcoming` + `past` arrays.
 //
 // Chart icon in the header pushes to analytics.
 
@@ -29,14 +24,6 @@ public struct BookingsView: View {
                 header
                     .padding(.horizontal, R.S.lg)
                     .padding(.top, R.S.sm)
-
-                // Review-prompt banner only appears when we have a
-                // recently-completed booking that still needs a rating.
-                if let recent = reviewCandidate {
-                    reviewPromptBanner(for: recent)
-                        .padding(.horizontal, R.S.lg)
-                        .padding(.top, R.S.md)
-                }
 
                 switch bookings.state {
                 case .idle, .loading:
@@ -63,14 +50,6 @@ public struct BookingsView: View {
             guard let userID = auth.currentUserID else { return }
             bookings.refresh(for: userID, role: nav.role)
         }
-    }
-
-    // MARK: — Derived
-
-    /// A completed booking from the last 14 days, for the review prompt.
-    private var reviewCandidate: BookingRow? {
-        let cutoff = Date().addingTimeInterval(-14 * 86_400)
-        return bookings.past.first { $0.eventDate >= cutoff && $0.status == "completed" }
     }
 
     // MARK: — Header
@@ -105,48 +84,6 @@ public struct BookingsView: View {
         }
     }
 
-    // MARK: — Review prompt banner
-
-    private func reviewPromptBanner(for row: BookingRow) -> some View {
-        Button {
-            nav.push(.review(bookingID: row.id.uuidString))
-        } label: {
-            HStack(spacing: R.S.md) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: R.Rad.md, style: .continuous)
-                        .fill(R.C.amber.opacity(0.16))
-                        .frame(width: 32, height: 32)
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(R.C.amber)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Rate \(row.artistName.uppercased())")
-                        .font(R.F.body(13, weight: .semibold))
-                        .foregroundStyle(R.C.fg1)
-                    Text("Event wrapped \(Self.bannerDateFormatter.string(from: row.eventDate)) · Leave a rating")
-                        .font(R.F.mono(9.5, weight: .medium))
-                        .tracking(0.4)
-                        .foregroundStyle(R.C.fg3)
-                }
-                Spacer()
-                ChevronRightIcon(size: 12, color: R.C.amber)
-            }
-            .padding(R.S.md)
-            .background {
-                RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
-                    .fill(LinearGradient(
-                        colors: [R.C.amber.opacity(0.10), R.C.amber.opacity(0.03)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
-                    .strokeBorder(R.C.amber.opacity(0.24), lineWidth: R.S.hairline)
-            }
-        }
-        .buttonStyle(.plain)
-    }
 
     // MARK: — Section
 
@@ -218,13 +155,6 @@ public struct BookingsView: View {
         }
     }
 
-    // MARK: — Formatters
-
-    private static let bannerDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "EEE d"
-        return f
-    }()
 }
 
 // MARK: - Row

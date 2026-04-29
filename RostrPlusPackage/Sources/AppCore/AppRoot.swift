@@ -369,9 +369,6 @@ private struct DetailRouter: View {
             case .notifications:
                 NotificationsView(nav: nav)
 
-            case .review(let id):
-                ReviewView(nav: nav, bookingID: id)
-
             case .claim:
                 ClaimView(nav: nav)
 
