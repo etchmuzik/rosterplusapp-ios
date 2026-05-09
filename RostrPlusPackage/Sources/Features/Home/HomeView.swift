@@ -65,7 +65,7 @@ public struct HomeView: View {
     private var greetingRow: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Good evening,")
+                Text(S.Home.greetingEvening)
                     .font(R.F.body(13, weight: .regular))
                     .foregroundStyle(R.C.fg2)
                 Text(firstName)
@@ -186,7 +186,7 @@ public struct HomeView: View {
                 Button {
                     nav.push(.bookingDetail(bookingID: booking.id.uuidString))
                 } label: {
-                    Text("Open booking")
+                    Text(S.CTA.openBooking)
                         .font(R.F.mono(10.5, weight: .semibold))
                         .tracking(0.6)
                         .textCase(.uppercase)
@@ -203,7 +203,7 @@ public struct HomeView: View {
                 Button {
                     nav.push(.thread(threadID: booking.id.uuidString))
                 } label: {
-                    Text("Message")
+                    Text(S.CTA.message)
                         .font(R.F.mono(10.5, weight: .semibold))
                         .tracking(0.6)
                         .textCase(.uppercase)
@@ -229,20 +229,20 @@ public struct HomeView: View {
 
     private var emptyTonightCard: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
-            Text("No upcoming bookings")
+            Text(S.State.emptyUpcomingBookings)
                 .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
-            Text("Book an artist")
+            Text(S.Home.emptyCTA)
                 .font(R.F.display(28, weight: .bold))
                 .tracking(-0.8)
                 .foregroundStyle(R.C.fg1)
-            Text("Your next gig will land here the moment you send a request.")
+            Text(S.Home.emptyBody)
                 .font(R.F.body(13, weight: .regular))
                 .foregroundStyle(R.C.fg2)
 
             Button {
                 nav.setTab(.roster)
             } label: {
-                Text("Browse roster")
+                Text(S.CTA.browseRoster)
                     .font(R.F.mono(10.5, weight: .semibold))
                     .tracking(0.6)
                     .textCase(.uppercase)
@@ -304,14 +304,14 @@ public struct HomeView: View {
     private var upNextSection: some View {
         VStack(alignment: .leading, spacing: R.S.md) {
             HStack {
-                Text("Up next")
+                Text(S.Home.upNext)
                     .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
                 Spacer()
                 Button {
                     nav.setTab(.bookings)
                 } label: {
                     HStack(spacing: 4) {
-                        Text("All bookings")
+                        Text(S.Home.allBookings)
                             .monoLabel(size: 9.5, tracking: 0.6, color: R.C.fg2)
                         ChevronRightIcon(size: 10, color: R.C.fg2)
                     }
@@ -321,7 +321,7 @@ public struct HomeView: View {
             .padding(.horizontal, R.S.lg)
 
             if bookings.upNext.isEmpty {
-                Text("Nothing scheduled yet.")
+                Text(S.Home.emptyCalendar)
                     .font(R.F.body(12, weight: .regular))
                     .foregroundStyle(R.C.fg3)
                     .padding(.horizontal, R.S.lg)

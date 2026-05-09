@@ -23,9 +23,14 @@ struct LocalizationTests {
         "common.back", "common.cancel", "common.save", "common.done", "common.retry",
         "tab.home", "tab.roster", "tab.bookings", "tab.inbox", "tab.me",
         "auth.signin", "auth.signup", "auth.signout", "auth.forgotpassword",
-        "cta.book", "cta.message", "cta.share",
+        "cta.book", "cta.message", "cta.share", "cta.openBooking", "cta.browseRoster",
         "state.loading", "state.empty.bookings", "state.empty.inbox", "state.offline",
-        "epk.title", "calendar.title", "notifications.title"
+        "state.empty.upcomingBookings",
+        "epk.title", "calendar.title", "notifications.title",
+        // 2026-05-09 batch — Home + Inbox sweep
+        "home.greeting.evening", "home.upNext", "home.allBookings",
+        "home.empty.cta", "home.empty.body", "home.empty.calendar",
+        "inbox.empty.title", "inbox.empty.body", "inbox.error.title"
     ]
 
     @Test("Catalog ships in the package bundle")

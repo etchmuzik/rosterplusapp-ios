@@ -64,7 +64,7 @@ public struct InboxView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Inbox")
+            Text(S.Tab.inbox)
                 .font(R.F.display(30, weight: .bold))
                 .tracking(-0.8)
                 .foregroundStyle(R.C.fg1)
@@ -89,10 +89,10 @@ public struct InboxView: View {
 
     private var emptyState: some View {
         VStack(spacing: R.S.xs) {
-            Text("No conversations yet")
+            Text(S.Inbox.emptyTitle)
                 .font(R.F.body(14, weight: .semibold))
                 .foregroundStyle(R.C.fg1)
-            Text("Messages about a booking land here.")
+            Text(S.Inbox.emptyBody)
                 .font(R.F.body(12, weight: .regular))
                 .foregroundStyle(R.C.fg3)
         }
@@ -101,7 +101,7 @@ public struct InboxView: View {
 
     private func failureCard(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
-            Text("Couldn't load inbox")
+            Text(S.Inbox.errorTitle)
                 .font(R.F.body(13, weight: .semibold))
                 .foregroundStyle(R.C.fg1)
             Text(message)

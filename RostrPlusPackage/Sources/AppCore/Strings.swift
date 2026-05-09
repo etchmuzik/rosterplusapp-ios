@@ -43,21 +43,39 @@ public enum S {
     }
 
     public enum CTA {
-        public static let book    = LocalizedStringResource("cta.book",    bundle: .atURL(Bundle.module.bundleURL))
-        public static let message = LocalizedStringResource("cta.message", bundle: .atURL(Bundle.module.bundleURL))
-        public static let share   = LocalizedStringResource("cta.share",   bundle: .atURL(Bundle.module.bundleURL))
+        public static let book         = LocalizedStringResource("cta.book",         bundle: .atURL(Bundle.module.bundleURL))
+        public static let message      = LocalizedStringResource("cta.message",      bundle: .atURL(Bundle.module.bundleURL))
+        public static let share        = LocalizedStringResource("cta.share",        bundle: .atURL(Bundle.module.bundleURL))
+        public static let openBooking  = LocalizedStringResource("cta.openBooking",  bundle: .atURL(Bundle.module.bundleURL))
+        public static let browseRoster = LocalizedStringResource("cta.browseRoster", bundle: .atURL(Bundle.module.bundleURL))
     }
 
     public enum State {
-        public static let loading       = LocalizedStringResource("state.loading",        bundle: .atURL(Bundle.module.bundleURL))
-        public static let emptyBookings = LocalizedStringResource("state.empty.bookings", bundle: .atURL(Bundle.module.bundleURL))
-        public static let emptyInbox    = LocalizedStringResource("state.empty.inbox",    bundle: .atURL(Bundle.module.bundleURL))
-        public static let offline       = LocalizedStringResource("state.offline",        bundle: .atURL(Bundle.module.bundleURL))
+        public static let loading               = LocalizedStringResource("state.loading",                 bundle: .atURL(Bundle.module.bundleURL))
+        public static let emptyBookings         = LocalizedStringResource("state.empty.bookings",          bundle: .atURL(Bundle.module.bundleURL))
+        public static let emptyInbox            = LocalizedStringResource("state.empty.inbox",             bundle: .atURL(Bundle.module.bundleURL))
+        public static let offline               = LocalizedStringResource("state.offline",                 bundle: .atURL(Bundle.module.bundleURL))
+        public static let emptyUpcomingBookings = LocalizedStringResource("state.empty.upcomingBookings",  bundle: .atURL(Bundle.module.bundleURL))
     }
 
     public enum Screen {
         public static let epk           = LocalizedStringResource("epk.title",           bundle: .atURL(Bundle.module.bundleURL))
         public static let calendar      = LocalizedStringResource("calendar.title",      bundle: .atURL(Bundle.module.bundleURL))
         public static let notifications = LocalizedStringResource("notifications.title", bundle: .atURL(Bundle.module.bundleURL))
+    }
+
+    public enum Home {
+        public static let greetingEvening = LocalizedStringResource("home.greeting.evening", bundle: .atURL(Bundle.module.bundleURL))
+        public static let upNext          = LocalizedStringResource("home.upNext",           bundle: .atURL(Bundle.module.bundleURL))
+        public static let allBookings     = LocalizedStringResource("home.allBookings",      bundle: .atURL(Bundle.module.bundleURL))
+        public static let emptyCTA        = LocalizedStringResource("home.empty.cta",        bundle: .atURL(Bundle.module.bundleURL))
+        public static let emptyBody       = LocalizedStringResource("home.empty.body",       bundle: .atURL(Bundle.module.bundleURL))
+        public static let emptyCalendar   = LocalizedStringResource("home.empty.calendar",   bundle: .atURL(Bundle.module.bundleURL))
+    }
+
+    public enum Inbox {
+        public static let emptyTitle = LocalizedStringResource("inbox.empty.title", bundle: .atURL(Bundle.module.bundleURL))
+        public static let emptyBody  = LocalizedStringResource("inbox.empty.body",  bundle: .atURL(Bundle.module.bundleURL))
+        public static let errorTitle = LocalizedStringResource("inbox.error.title", bundle: .atURL(Bundle.module.bundleURL))
     }
 }
