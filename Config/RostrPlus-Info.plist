@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+  Partial Info.plist — merged into the synthesized Info.plist at build
+  time. We use this ONLY for keys that Xcode's INFOPLIST_KEY_*
+  synthesis silently drops; every other Info.plist value should stay
+  in Config/Shared.xcconfig as INFOPLIST_KEY_* entries.
+
+  Verified-broken keys (Xcode 16, iOS 18):
+    - UIBackgroundModes: declared as INFOPLIST_KEY_UIBackgroundModes in
+      xcconfig, picked up correctly by xcodebuild -showBuildSettings,
+      but never lands in the built app's Info.plist. Without this key
+      iOS will not deliver content-available silent pushes — the
+      PushStore wiring is otherwise complete (see PushStore.swift,
+      AppDelegate.swift, send-push edge function).
+
+  How the merge works:
+    Config/Shared.xcconfig still has GENERATE_INFOPLIST_FILE = YES,
+    so Xcode synthesises a plist from all the INFOPLIST_KEY_* entries.
+    The xcconfig also sets INFOPLIST_FILE = Config/RostrPlus-Info.plist,
+    pointing at this file. Xcode reads this file FIRST (as the base
+    plist), then layers the synthesised keys on top. Anything in this
+    file gets preserved unless an INFOPLIST_KEY_* entry overrides it.
+
+  Keep this file minimal. Every key added here is a key the
+  declarative xcconfig path can no longer manage.
+  -->
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>remote-notification</string>
+  </array>
+</dict>
+</plist>

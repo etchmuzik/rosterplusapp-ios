@@ -56,6 +56,10 @@ INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = ROSTR+ needs permission to sav
 // will reach for it once the native camera sheet lands.
 INFOPLIST_KEY_NSCameraUsageDescription = ROSTR+ uses the camera to capture artist profile photos.
 
-// Push — lets UIApplication deliver silent + alert notifications in
-// the background. Paired with aps-environment in the entitlements.
-INFOPLIST_KEY_UIBackgroundModes = remote-notification
+// Push — UIBackgroundModes lives in Config/RostrPlus-Info.plist
+// because Xcode's INFOPLIST_KEY_UIBackgroundModes synthesis is broken
+// (declares fine via xcodebuild -showBuildSettings but never lands in
+// the built Info.plist). The partial plist gets merged into the
+// generated one at build time. See the file's own comment for the
+// merge mechanics. Paired with aps-environment in the entitlements.
+INFOPLIST_FILE = Config/RostrPlus-Info.plist
