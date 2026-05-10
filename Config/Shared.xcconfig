@@ -9,7 +9,7 @@
 PRODUCT_NAME = RostrPlus
 PRODUCT_BUNDLE_IDENTIFIER = io.rosterplus.app
 MARKETING_VERSION = 0.1.0
-CURRENT_PROJECT_VERSION = 3
+CURRENT_PROJECT_VERSION = 4
 
 // ── Platform ─────────────────────────────────────────────
 IPHONEOS_DEPLOYMENT_TARGET = 18.0
