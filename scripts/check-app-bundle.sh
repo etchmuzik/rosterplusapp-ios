@@ -96,6 +96,15 @@ check "NSPhotoLibraryUsageDescription is non-empty" \
 check "NSCameraUsageDescription is non-empty" \
   "/usr/libexec/PlistBuddy -c 'Print :NSCameraUsageDescription' '$PLIST'" \
   "ROSTR+"
+# Export-compliance: ROSTR+ uses only iOS-builtin encryption, so this
+# is permanently false. Baking it in means App Store Connect never
+# prompts for the encryption documentation on a new build. If a
+# future build ever links a third-party crypto framework, flip this
+# assertion to expect "true" and answer the ASC questionnaire about
+# exemption status. See Config/RostrPlus-Info.plist for the rationale.
+check "ITSAppUsesNonExemptEncryption = false (no ASC encryption prompt)" \
+  "/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' '$PLIST'" \
+  "false"
 
 echo
 echo "==> Entitlements checks"

@@ -31,5 +31,23 @@
   <array>
     <string>remote-notification</string>
   </array>
+
+  <!--
+  ITSAppUsesNonExemptEncryption: bake in the export-compliance answer
+  so App Store Connect never prompts on a new build. ROSTR+ uses only
+  the encryption already in iOS (HTTPS via URLSession, Keychain) and
+  bundles no third-party crypto, so the answer is permanently NO —
+  this maps to "None of the algorithms mentioned above" in the ASC
+  encryption-documentation dialog.
+
+  See https://developer.apple.com/help/app-store-connect/reference/export-compliance-overview
+
+  If a future build ever links a third-party crypto framework (e.g.
+  CryptoSwift, libsodium), flip this to <true/> and answer the ASC
+  questionnaire about exemption status. Don't just delete this key —
+  having no answer at all reopens the manual-dialog loop.
+  -->
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <false/>
 </dict>
 </plist>
