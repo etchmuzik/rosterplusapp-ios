@@ -41,7 +41,7 @@ public struct AvailabilityView: View {
                             .frame(width: 38, height: 28)
                             .background { Capsule().fill(R.C.fg1) }
                     } else {
-                        Text("Save")
+                        Text(S.Common.save)
                             .monoLabel(size: 10, tracking: 0.8, color: R.C.bg0)
                             .padding(.vertical, 8)
                             .padding(.horizontal, 14)

@@ -193,7 +193,7 @@ private struct StepCard: View {
                     Text("Step \(index)")
                         .monoLabel(size: 8.5, tracking: 0.6, color: R.C.fg3)
                     if isDone {
-                        Text("Done")
+                        Text(S.Common.done)
                             .monoLabel(size: 8.5, tracking: 0.6, color: R.C.green)
                     }
                 }
