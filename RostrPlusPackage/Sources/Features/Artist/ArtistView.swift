@@ -106,7 +106,7 @@ public struct ArtistView: View {
 
     private func bioCard(_ artist: ArtistDetail) -> some View {
         VStack(alignment: .leading, spacing: R.S.xs) {
-            Text("About")
+            Text(S.Section.about)
                 .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
             Text(bioText(for: artist))
                 .font(R.F.body(14, weight: .regular))
@@ -178,10 +178,10 @@ public struct ArtistView: View {
 
     private func recentSets(_ artist: ArtistDetail) -> some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
-            Text("Recent sets")
+            Text(S.Section.recentSets)
                 .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
             if artist.pastPerformances.isEmpty {
-                Text("No recent performances listed.")
+                Text(S.State.emptyRecentSets)
                     .font(R.F.body(12, weight: .regular))
                     .foregroundStyle(R.C.fg3)
                     .padding(.vertical, R.S.sm)
@@ -202,7 +202,7 @@ public struct ArtistView: View {
             PrimaryButton("Message", variant: .ghost) {
                 nav.push(.thread(threadID: artistID.uuidString))
             }
-            PrimaryButton("Request booking", variant: .filled) {
+            PrimaryButton(S.CTA.requestBooking, variant: .filled) {
                 nav.push(.booking(artistID: artistID.uuidString))
             }
             .layoutPriority(1)

@@ -135,7 +135,7 @@ public struct BookingsView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(R.C.red)
-                Text("Couldn't load bookings")
+                Text(S.State.errorBookings)
                     .font(R.F.body(13, weight: .semibold))
                     .foregroundStyle(R.C.fg1)
             }

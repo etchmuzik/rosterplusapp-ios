@@ -140,10 +140,10 @@ public struct PaymentsView: View {
 
     private var emptyState: some View {
         VStack(alignment: .center, spacing: 4) {
-            Text("No payments here yet")
+            Text(S.State.emptyPaymentsTitle)
                 .font(R.F.body(14, weight: .semibold))
                 .foregroundStyle(R.C.fg1)
-            Text("Paid bookings show up the moment the transfer lands.")
+            Text(S.State.emptyPaymentsBody)
                 .font(R.F.body(12, weight: .regular))
                 .foregroundStyle(R.C.fg3)
                 .multilineTextAlignment(.center)
@@ -154,7 +154,7 @@ public struct PaymentsView: View {
 
     private func failureCard(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
-            Text("Couldn't load payments")
+            Text(S.State.errorPayments)
                 .font(R.F.body(13, weight: .semibold))
                 .foregroundStyle(R.C.fg1)
             Text(message)

@@ -31,7 +31,7 @@ public struct NotificationsView: View {
                     #endif
                     for n in store.unread { store.markRead(n.id) }
                 } label: {
-                    Text("Mark read")
+                    Text(S.Notification.markRead)
                         .monoLabel(size: 9.5, tracking: 0.6, color: R.C.fg2)
                         .padding(.vertical, 7)
                         .padding(.horizontal, 12)
@@ -111,7 +111,7 @@ public struct NotificationsView: View {
 
     private func failureCard(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
-            Text("Couldn't load notifications")
+            Text(S.State.errorNotifications)
                 .font(R.F.body(13, weight: .semibold))
                 .foregroundStyle(R.C.fg1)
             Text(message)

@@ -166,7 +166,7 @@ public struct EPKView: View {
 
     private func bioCard(_ artist: ArtistDetail) -> some View {
         VStack(alignment: .leading, spacing: R.S.xs) {
-            Text("About")
+            Text(S.Section.about)
                 .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
             Text(bioText(for: artist))
                 .font(R.F.body(14, weight: .regular))
@@ -196,10 +196,10 @@ public struct EPKView: View {
 
     private func performancesSection(_ artist: ArtistDetail) -> some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
-            Text("Past performances")
+            Text(S.Section.pastPerformances)
                 .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
             if artist.pastPerformances.isEmpty {
-                Text("No past performances listed yet.")
+                Text(S.State.emptyPastPerformances)
                     .font(R.F.body(12, weight: .regular))
                     .foregroundStyle(R.C.fg3)
                     .padding(.vertical, R.S.sm)
@@ -217,10 +217,10 @@ public struct EPKView: View {
 
     private func pressSection(_ artist: ArtistDetail) -> some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
-            Text("Press")
+            Text(S.Section.press)
                 .monoLabel(size: 9.5, tracking: 0.8, color: R.C.fg3)
             if artist.pressQuotes.isEmpty {
-                Text("No press quotes yet.")
+                Text(S.State.emptyPressQuotes)
                     .font(R.F.body(12, weight: .regular))
                     .foregroundStyle(R.C.fg3)
                     .padding(.vertical, R.S.sm)

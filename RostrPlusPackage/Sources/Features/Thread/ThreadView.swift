@@ -140,7 +140,7 @@ public struct ThreadView: View {
             }
             .buttonStyle(.plain)
             .disabled(!canSend)
-            .accessibilityLabel("Send message")
+            .accessibilityLabel(S.CTA.sendMessage)
         }
         .padding(.horizontal, R.S.lg)
         .padding(.vertical, R.S.sm)

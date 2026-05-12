@@ -45,6 +45,26 @@ public struct PrimaryButton: View {
         self.action = action
     }
 
+    /// Convenience overload — accepts a `LocalizedStringResource` so call sites
+    /// can pass `S.CTA.requestBooking` instead of a literal English string.
+    /// The resource is resolved with `String(localized:)` which honours the
+    /// bundle's preferred-language list (the user's iOS locale).
+    public init(
+        _ resource: LocalizedStringResource,
+        variant: Variant = .filled,
+        isLoading: Bool = false,
+        isEnabled: Bool = true,
+        action: @escaping () -> Void
+    ) {
+        self.init(
+            String(localized: resource),
+            variant: variant,
+            isLoading: isLoading,
+            isEnabled: isEnabled,
+            action: action
+        )
+    }
+
     public var body: some View {
         Button {
             guard isEnabled, !isLoading else { return }

@@ -130,11 +130,11 @@ public struct BookingDetailView: View {
         let events = resolvedUUID.map { timelineStore.events(for: $0) } ?? []
         let activeID = resolvedUUID.flatMap { timelineStore.activeEventID(for: $0) }
         return VStack(alignment: .leading, spacing: R.S.md) {
-            Text("Timeline")
+            Text(S.Booking.timeline)
                 .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
             VStack(alignment: .leading, spacing: 0) {
                 if events.isEmpty {
-                    Text("No events yet.")
+                    Text(S.Booking.emptyTimeline)
                         .font(R.F.body(12, weight: .regular))
                         .foregroundStyle(R.C.fg3)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -160,15 +160,15 @@ public struct BookingDetailView: View {
 
     private func actions(for row: BookingRow) -> some View {
         VStack(spacing: R.S.sm) {
-            PrimaryButton("Message artist", variant: .ghost) {
+            PrimaryButton(S.CTA.messageArtist, variant: .ghost) {
                 nav.push(.thread(threadID: bookingID))
             }
-            PrimaryButton("View contract", variant: .ghost) {
+            PrimaryButton(S.CTA.viewContract, variant: .ghost) {
                 nav.push(.contract(contractID: bookingID))
             }
             // Completed + payment exists → invoice CTA is primary.
             if row.status == "completed" {
-                PrimaryButton("View invoice", variant: .filled) {
+                PrimaryButton(S.CTA.viewInvoice, variant: .filled) {
                     nav.push(.invoice(bookingID: bookingID))
                 }
             }

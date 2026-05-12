@@ -134,7 +134,7 @@ public struct SettingsView: View {
             Button {
                 nav.push(.profileEdit)
             } label: {
-                Text("Edit")
+                Text(S.Common.edit)
                     .monoLabel(size: 10, tracking: 0.6, color: R.C.fg1)
                     .padding(.vertical, 7)
                     .padding(.horizontal, 12)

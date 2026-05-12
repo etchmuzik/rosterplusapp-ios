@@ -238,7 +238,7 @@ public struct AvailabilityView: View {
     private var feeCard: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Base fee")
+                Text(S.Availability.baseFee)
                     .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
                 Spacer()
                 Text("AED \(Int(baseFeeK))K")
@@ -270,7 +270,7 @@ public struct AvailabilityView: View {
     private var tourCard: some View {
         HStack(alignment: .center, spacing: R.S.md) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Tour mode")
+                Text(S.Availability.tourMode)
                     .font(R.F.body(14, weight: .semibold))
                     .foregroundStyle(R.C.fg1)
                 Text("Show 'Flexible on travel' on your profile. Promoters in other cities see you first.")

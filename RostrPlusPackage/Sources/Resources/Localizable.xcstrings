@@ -629,6 +629,546 @@
           }
         }
       }
+    },
+    "common.edit": {
+      "comment": "Generic edit affordance — Settings header, profile fields.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعديل"
+          }
+        }
+      }
+    },
+    "common.skip": {
+      "comment": "Skip button — Onboarding intro slides.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تخطّي"
+          }
+        }
+      }
+    },
+    "common.tryAgain": {
+      "comment": "Retry CTA used on error states (Roster, etc.). Distinct from common.retry which is a generic verb.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حاول مجدّداً"
+          }
+        }
+      }
+    },
+    "common.all": {
+      "comment": "Generic \"All\" link — Artist Dashboard \"All\" link above upcoming gigs.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الكل"
+          }
+        }
+      }
+    },
+    "cta.requestBooking": {
+      "comment": "Primary CTA on Artist detail — initiates the booking request flow.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request booking"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طلب حجز"
+          }
+        }
+      }
+    },
+    "cta.messageArtist": {
+      "comment": "Secondary CTA — open thread with the artist from BookingDetail.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message artist"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مراسلة الفنان"
+          }
+        }
+      }
+    },
+    "cta.viewContract": {
+      "comment": "BookingDetail CTA — opens the performance agreement.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View contract"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرض العقد"
+          }
+        }
+      }
+    },
+    "cta.viewInvoice": {
+      "comment": "BookingDetail CTA — opens the invoice screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View invoice"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرض الفاتورة"
+          }
+        }
+      }
+    },
+    "cta.sendMessage": {
+      "comment": "Thread send-message button — VoiceOver label on the paper-plane icon.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send message"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إرسال الرسالة"
+          }
+        }
+      }
+    },
+    "booking.timeline": {
+      "comment": "BookingDetail section header — chronological list of events on the booking.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timeline"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجدول الزمني"
+          }
+        }
+      }
+    },
+    "booking.empty.timeline": {
+      "comment": "BookingDetail timeline empty state.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No events yet."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد أحداث بعد."
+          }
+        }
+      }
+    },
+    "availability.baseFee": {
+      "comment": "Availability screen — label above the base-fee slider.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base fee"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحدّ الأدنى للأجر"
+          }
+        }
+      }
+    },
+    "availability.tourMode": {
+      "comment": "Availability toggle — flag the artist as touring/flexible-on-travel.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tour mode"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وضع الجولة"
+          }
+        }
+      }
+    },
+    "section.about": {
+      "comment": "Generic \"About\" section header — EPK and Artist detail.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نبذة"
+          }
+        }
+      }
+    },
+    "section.press": {
+      "comment": "EPK section header — press quotes block.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصحافة"
+          }
+        }
+      }
+    },
+    "section.recentSets": {
+      "comment": "Artist detail — recent performances section header.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent sets"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أحدث العروض"
+          }
+        }
+      }
+    },
+    "section.pastPerformances": {
+      "comment": "EPK section header — past gigs list.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Past performances"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العروض السابقة"
+          }
+        }
+      }
+    },
+    "section.upcomingGigs": {
+      "comment": "Artist Dashboard section header — upcoming bookings.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upcoming gigs"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العروض القادمة"
+          }
+        }
+      }
+    },
+    "section.bookingRequests": {
+      "comment": "Artist Dashboard section header — pending booking requests.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Booking requests"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طلبات الحجز"
+          }
+        }
+      }
+    },
+    "state.empty.upcomingGigs": {
+      "comment": "Artist Dashboard — empty state for the upcoming-gigs section.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No upcoming gigs booked yet."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد عروض قادمة بعد."
+          }
+        }
+      }
+    },
+    "state.empty.pastPerformances": {
+      "comment": "EPK — empty state for the past-performances section.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No past performances listed yet."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تُضف أي عروض سابقة بعد."
+          }
+        }
+      }
+    },
+    "state.empty.pressQuotes": {
+      "comment": "EPK — empty state for the press-quotes section.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No press quotes yet."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد اقتباسات صحفية بعد."
+          }
+        }
+      }
+    },
+    "state.empty.recentSets": {
+      "comment": "Artist detail — empty state for the recent-performances section.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No recent performances listed."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد عروض حديثة مسجّلة."
+          }
+        }
+      }
+    },
+    "state.empty.payments.title": {
+      "comment": "Payments empty state — heading.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No payments here yet"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد مدفوعات بعد"
+          }
+        }
+      }
+    },
+    "state.empty.payments.body": {
+      "comment": "Payments empty state — body copy below the heading.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paid bookings show up the moment the transfer lands."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تظهر الحجوزات المدفوعة بمجرد وصول التحويل."
+          }
+        }
+      }
+    },
+    "state.error.bookings": {
+      "comment": "Bookings list error state — heading when the initial fetch fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load bookings"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل الحجوزات"
+          }
+        }
+      }
+    },
+    "state.error.payments": {
+      "comment": "Payments error state — heading when the initial fetch fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load payments"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل المدفوعات"
+          }
+        }
+      }
+    },
+    "state.error.notifications": {
+      "comment": "Notifications error state — heading when the initial fetch fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load notifications"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل الإشعارات"
+          }
+        }
+      }
+    },
+    "state.error.roster": {
+      "comment": "Roster error state — heading when the directory fetch fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load the roster"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل قائمة الفنانين"
+          }
+        }
+      }
+    },
+    "notifications.markRead": {
+      "comment": "Notifications — \"Mark read\" affordance on a single notification card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mark read"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديد كمقروء"
+          }
+        }
+      }
     }
   }
 }

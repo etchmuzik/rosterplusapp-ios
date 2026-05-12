@@ -73,7 +73,7 @@ public struct OnboardView: View {
                 Button {
                     withAnimation(R.M.easeOut) { page = 2 }
                 } label: {
-                    Text("Skip")
+                    Text(S.Common.skip)
                         .monoLabel(size: 10, tracking: 0.6, color: R.C.fg2)
                         .padding(.vertical, 7)
                         .padding(.horizontal, 12)

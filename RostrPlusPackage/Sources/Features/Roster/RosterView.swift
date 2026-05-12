@@ -284,7 +284,7 @@ private struct FailureCard: View {
                 Image(systemName: "wifi.exclamationmark")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(R.C.red)
-                Text("Couldn't load the roster")
+                Text(S.State.errorRoster)
                     .font(R.F.body(14, weight: .semibold))
                     .foregroundStyle(R.C.fg1)
             }
@@ -292,7 +292,7 @@ private struct FailureCard: View {
                 .font(R.F.body(12, weight: .regular))
                 .foregroundStyle(R.C.fg3)
                 .lineLimit(3)
-            PrimaryButton("Try again", variant: .ghost) {
+            PrimaryButton(S.Common.tryAgain, variant: .ghost) {
                 retry()
             }
         }

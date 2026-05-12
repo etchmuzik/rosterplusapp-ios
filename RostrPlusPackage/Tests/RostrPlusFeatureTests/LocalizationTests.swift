@@ -30,7 +30,21 @@ struct LocalizationTests {
         // 2026-05-09 batch — Home + Inbox sweep
         "home.greeting.evening", "home.upNext", "home.allBookings",
         "home.empty.cta", "home.empty.body", "home.empty.calendar",
-        "inbox.empty.title", "inbox.empty.body", "inbox.error.title"
+        "inbox.empty.title", "inbox.empty.body", "inbox.error.title",
+        // 2026-05-12 batch — Booking flow + dashboard sections + error toasts
+        "common.edit", "common.skip", "common.tryAgain", "common.all",
+        "cta.requestBooking", "cta.messageArtist", "cta.viewContract",
+        "cta.viewInvoice", "cta.sendMessage",
+        "booking.timeline", "booking.empty.timeline",
+        "availability.baseFee", "availability.tourMode",
+        "section.about", "section.press", "section.recentSets",
+        "section.pastPerformances", "section.upcomingGigs", "section.bookingRequests",
+        "state.empty.upcomingGigs", "state.empty.pastPerformances",
+        "state.empty.pressQuotes", "state.empty.recentSets",
+        "state.empty.payments.title", "state.empty.payments.body",
+        "state.error.bookings", "state.error.payments",
+        "state.error.notifications", "state.error.roster",
+        "notifications.markRead"
     ]
 
     @Test("Catalog ships in the package bundle")

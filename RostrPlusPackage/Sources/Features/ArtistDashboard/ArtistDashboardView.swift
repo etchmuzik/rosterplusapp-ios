@@ -227,7 +227,7 @@ public struct ArtistDashboardView: View {
     private var requestsSection: some View {
         VStack(alignment: .leading, spacing: R.S.md) {
             HStack {
-                Text("Booking requests")
+                Text(S.Section.bookingRequests)
                     .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
                 Spacer()
                 Text("\(bookings.pendingRequests.count) waiting")
@@ -283,14 +283,14 @@ public struct ArtistDashboardView: View {
     private var upcomingSection: some View {
         VStack(alignment: .leading, spacing: R.S.md) {
             HStack {
-                Text("Upcoming gigs")
+                Text(S.Section.upcomingGigs)
                     .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
                 Spacer()
                 Button {
                     nav.setTab(.bookings)
                 } label: {
                     HStack(spacing: 4) {
-                        Text("All")
+                        Text(S.Common.all)
                             .monoLabel(size: 9.5, tracking: 0.6, color: R.C.fg2)
                         ChevronRightIcon(size: 10, color: R.C.fg2)
                     }
@@ -300,7 +300,7 @@ public struct ArtistDashboardView: View {
             .padding(.horizontal, R.S.lg)
 
             if confirmedUpcoming.isEmpty {
-                Text("No upcoming gigs booked yet.")
+                Text(S.State.emptyUpcomingGigs)
                     .font(R.F.body(12, weight: .regular))
                     .foregroundStyle(R.C.fg3)
                     .padding(.horizontal, R.S.lg)
