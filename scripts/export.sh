@@ -20,11 +20,31 @@ fi
 mkdir -p "$EXPORT_PATH"
 
 echo "› Exporting .ipa (App Store distribution)…"
+
+# If ASC API key env vars are set, pass them through to xcodebuild so
+# `-allowProvisioningUpdates` can fetch the distribution certificate
+# from App Store Connect headlessly. Without this, the export step
+# falls back to whatever Xcode has cached locally — and if no
+# "Apple Distribution" cert is in the keychain, the export fails with
+# "No signing certificate iOS Distribution found".
+#
+# Same three env vars upload.sh already requires.
+ASC_FLAGS=()
+if [[ -n "${ASC_KEY_ID:-}" && -n "${ASC_ISSUER_ID:-}" && -n "${ASC_KEY_PATH:-}" ]]; then
+    ASC_FLAGS=(
+        -authenticationKeyID "$ASC_KEY_ID"
+        -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+        -authenticationKeyPath "$ASC_KEY_PATH"
+    )
+    echo "  (using ASC API key for headless cert provisioning)"
+fi
+
 xcodebuild -exportArchive \
     -archivePath "$ARCHIVE_PATH" \
     -exportPath "$EXPORT_PATH" \
     -exportOptionsPlist "$OPTIONS_PLIST" \
-    -allowProvisioningUpdates
+    -allowProvisioningUpdates \
+    "${ASC_FLAGS[@]}"
 
 echo ""
 echo "✅ .ipa at $EXPORT_PATH/RostrPlus.ipa"
