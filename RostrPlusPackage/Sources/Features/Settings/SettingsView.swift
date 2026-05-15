@@ -249,13 +249,23 @@ public struct SettingsView: View {
         VStack(alignment: .center, spacing: 3) {
             Text("ROSTR+ iOS")
                 .monoLabel(size: 9, tracking: 0.8, color: R.C.fg3)
-            Text("v0.1.0 · Build 1")
+            Text(buildString)
                 .font(R.F.mono(9, weight: .medium))
                 .tracking(0.5)
                 .foregroundStyle(R.C.fg3)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, R.S.sm)
+    }
+
+    /// Pulls CFBundleShortVersionString + CFBundleVersion from the
+    /// app shell's Info.plist so the footer doesn't lie about which
+    /// build the user is running.
+    private var buildString: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "v\(version) · Build \(build)"
     }
 
     // MARK: — Sign out

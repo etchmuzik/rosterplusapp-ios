@@ -235,13 +235,25 @@ public struct AvailabilityView: View {
 
     // MARK: — Fee card
 
+    /// The artist's own currency, falling back to AED before the
+    /// detail row resolves. Drives the displayed currency on the fee
+    /// slider so artists who price in SAR / USD don't see AED on
+    /// their own profile.
+    private var artistCurrency: String {
+        if let myID = artistStore.myArtistID,
+           let detail = artistStore.cache[myID] {
+            return detail.currency
+        }
+        return "AED"
+    }
+
     private var feeCard: some View {
         VStack(alignment: .leading, spacing: R.S.sm) {
             HStack(alignment: .firstTextBaseline) {
                 Text(S.Availability.baseFee)
                     .monoLabel(size: 10, tracking: 0.8, color: R.C.fg3)
                 Spacer()
-                Text("AED \(Int(baseFeeK))K")
+                Text(MoneyFormatter.compact(Decimal(baseFeeK * 1000), currency: artistCurrency))
                     .font(R.F.display(24, weight: .bold))
                     .tracking(-0.5)
                     .foregroundStyle(R.C.fg1)
@@ -256,9 +268,11 @@ public struct AvailabilityView: View {
                 .padding(.top, R.S.xs)
 
             HStack {
-                Text("AED 5K").monoLabel(size: 8.5, tracking: 0.5, color: R.C.fg3)
+                Text(MoneyFormatter.compact(Decimal(5_000), currency: artistCurrency))
+                    .monoLabel(size: 8.5, tracking: 0.5, color: R.C.fg3)
                 Spacer()
-                Text("AED 80K").monoLabel(size: 8.5, tracking: 0.5, color: R.C.fg3)
+                Text(MoneyFormatter.compact(Decimal(80_000), currency: artistCurrency))
+                    .monoLabel(size: 8.5, tracking: 0.5, color: R.C.fg3)
             }
         }
         .padding(R.S.md)
@@ -307,7 +321,10 @@ public struct AvailabilityView: View {
         var out: [CalendarCell] = []
 
         let monthRange = cal.range(of: .day, in: .month, for: visibleMonth) ?? 1..<31
-        let firstOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: visibleMonth))!
+        // Falls back to visibleMonth itself if the calendar can't
+        // construct the first-of-month from its own components, which
+        // shouldn't happen for Gregorian dates but isn't worth a crash.
+        let firstOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: visibleMonth)) ?? visibleMonth
         let weekday = (cal.component(.weekday, from: firstOfMonth) + 5) % 7
 
         for i in 0..<weekday {
@@ -315,7 +332,7 @@ public struct AvailabilityView: View {
         }
 
         for day in monthRange {
-            let date = cal.date(byAdding: .day, value: day - 1, to: firstOfMonth)!
+            let date = cal.date(byAdding: .day, value: day - 1, to: firstOfMonth) ?? firstOfMonth
             out.append(CalendarCell(id: day, date: date, inCurrentMonth: true))
         }
 

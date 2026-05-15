@@ -67,6 +67,11 @@ public final class BookingsStore {
     private var inFlight: Task<Void, Never>?
     private var detailInFlight: Set<UUID> = []
 
+    /// Bumped on every reset() so detail/respond Tasks captured by a
+    /// previous session can detect the wipe before mutating cache or
+    /// state. Avoids tracking every Task individually.
+    private var sessionEpoch: UInt = 0
+
     public init() {}
 
     /// Drop all cached rows and cancel any in-flight fetch. Called on
@@ -79,6 +84,7 @@ public final class BookingsStore {
         detailCache.removeAll()
         detailErrors.removeAll()
         lastError = nil
+        sessionEpoch &+= 1
         state = .idle
     }
 
@@ -143,11 +149,14 @@ public final class BookingsStore {
     // MARK: — Single detail
 
     /// Fetch (or return cached) detail for one booking. BookingDetailView
-    /// calls this on appear; cache hits are instant.
+    /// calls this on appear; cache hits are instant. Captures the
+    /// session epoch and bails before mutating cache if reset() ran
+    /// in between (so user A's detail can't land into user B's cache).
     public func fetchDetail(id: UUID) {
         if detailCache[id] != nil { return }
         if detailInFlight.contains(id) { return }
         detailInFlight.insert(id)
+        let epoch = sessionEpoch
 
         Task { [weak self] in
             guard let self else { return }
@@ -161,13 +170,15 @@ public final class BookingsStore {
                     .single()
                     .execute()
                     .value
+                guard self.sessionEpoch == epoch else { return }
                 self.detailCache[id] = Self.rowFromDTO(row)
                 self.detailErrors[id] = nil
             } catch {
                 // Surface the failure so BookingDetailView can render a
                 // FailureCard with a retry CTA — push deep-links land
                 // here, so a network blip can't strand the user on a
-                // forever-skeleton.
+                // forever-skeleton. Skip if reset() flipped the epoch.
+                guard self.sessionEpoch == epoch else { return }
                 self.detailErrors[id] = error.localizedDescription
             }
         }
@@ -221,6 +232,7 @@ public final class BookingsStore {
             state = .loaded(upcoming: up, past: past)
         }
 
+        let epoch = sessionEpoch
         Task { [weak self] in
             guard let self else { return }
             struct Patch: Encodable { let status: String }
@@ -230,8 +242,10 @@ public final class BookingsStore {
                     .update(Patch(status: response.targetStatus))
                     .eq("id", value: bookingID)
                     .execute()
+                guard self.sessionEpoch == epoch else { return }
                 self.lastError = nil
             } catch {
+                guard self.sessionEpoch == epoch else { return }
                 #if DEBUG
                 log.error("respond failed: \(error.localizedDescription, privacy: .public)")
                 #endif

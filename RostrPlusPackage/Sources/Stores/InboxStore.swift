@@ -79,8 +79,12 @@ public final class InboxStore {
         inFlight?.cancel()
         inFlight = nil
         if let ch = channel { await ch.unsubscribe() }
-        channel = nil
+        // Cancel the realtime subscription handle before dropping the
+        // reference so the underlying observer isn't leaked when the
+        // channel is destroyed (matches teardownRealtime's order).
+        subscription?.cancel()
         subscription = nil
+        channel = nil
         currentUserID = nil
         messages = []
         profileNames = [:]

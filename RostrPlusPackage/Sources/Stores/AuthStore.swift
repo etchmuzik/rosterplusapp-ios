@@ -42,11 +42,12 @@ public final class AuthStore {
 
     public private(set) var state: State = .unknown {
         didSet {
-            // Tie email-confirmation flag to session validity so any
-            // path that flips state to .signedOut clears it without a
-            // manual reset call.
+            // Tie email-confirmation flag and any stale error to
+            // session validity so any path that flips state to
+            // .signedOut clears them without a manual reset call.
             if case .signedIn = state { return }
             isEmailConfirmed = false
+            lastError = nil
         }
     }
     public private(set) var lastError: String?

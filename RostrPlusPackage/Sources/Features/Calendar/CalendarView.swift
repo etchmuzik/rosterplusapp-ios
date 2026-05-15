@@ -192,7 +192,10 @@ public struct CalendarView: View {
             out.append(DayCell(id: -1 - i, date: nil))
         }
         for day in range {
-            let date = cal.date(byAdding: .day, value: day - 1, to: firstOfMonth)!
+            // Foundation always returns a date here for Gregorian
+            // month math, but a `?? firstOfMonth` keeps the cell from
+            // crashing if the calendar configuration ever changes.
+            let date = cal.date(byAdding: .day, value: day - 1, to: firstOfMonth) ?? firstOfMonth
             out.append(DayCell(id: day, date: date))
         }
         while out.count < 42 {

@@ -60,8 +60,12 @@ public final class NotificationsStore {
         inFlight?.cancel()
         inFlight = nil
         if let ch = channel { await ch.unsubscribe() }
-        channel = nil
+        // Cancel the realtime subscription handle before dropping the
+        // reference (matches teardownRealtime's order so leaks can't
+        // sneak in via the reset path).
+        subscription?.cancel()
         subscription = nil
+        channel = nil
         items = []
         state = .idle
     }
