@@ -87,6 +87,7 @@ public final class BookingsStore {
                         .from("bookings")
                         .select(BookingDTO.selectFields)
                         .eq("promoter_id", value: userID)
+                        .is("deleted_at", value: nil)
                         .order("event_date", ascending: true)
                         .execute()
                         .value
@@ -103,6 +104,7 @@ public final class BookingsStore {
                         .from("bookings")
                         .select(BookingDTO.selectFields)
                         .eq("artist_id", value: myArtistID)
+                        .is("deleted_at", value: nil)
                         .order("event_date", ascending: true)
                         .execute()
                         .value
@@ -282,6 +284,7 @@ public final class BookingsStore {
             .from("artists")
             .select("id")
             .eq("profile_id", value: userID)
+            .is("deleted_at", value: nil)
             .limit(1)
             .execute()
             .value
