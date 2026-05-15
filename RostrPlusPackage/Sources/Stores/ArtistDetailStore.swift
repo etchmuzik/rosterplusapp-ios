@@ -12,6 +12,35 @@ import Foundation
 import Observation
 import Supabase
 
+/// Narrow seam for the writes ArtistDetailStore performs against
+/// public.artists. Production wires a Supabase-backed impl that
+/// PATCHes the row; tests inject a mock so optimistic-update +
+/// rollback branches can be observed without a live session.
+public protocol ArtistWriter: Sendable {
+    /// PATCH /artists?id=eq.<artistID> with the encoded payload.
+    /// Throws on any non-2xx — callers swallow the throw and roll back.
+    func patchArtist<Patch: Encodable & Sendable>(
+        _ patch: Patch, artistID: UUID
+    ) async throws
+}
+
+/// Default impl that hits the live Supabase project. Wraps
+/// RostrSupabase.shared so consumers that don't pass a writer see the
+/// same behaviour as before this seam was added.
+public struct SupabaseArtistWriter: ArtistWriter {
+    public init() {}
+
+    public func patchArtist<Patch: Encodable & Sendable>(
+        _ patch: Patch, artistID: UUID
+    ) async throws {
+        _ = try await RostrSupabase.shared
+            .from("artists")
+            .update(patch)
+            .eq("id", value: artistID)
+            .execute()
+    }
+}
+
 /// Display-friendly snapshot of one artist with all EPK surface loaded.
 public struct ArtistDetail: Identifiable, Hashable, Sendable {
     public let id: UUID
@@ -98,9 +127,12 @@ public final class ArtistDetailStore {
     public private(set) var lastError: String?
 
     private let client = RostrSupabase.shared
+    private let writer: any ArtistWriter
     private var inFlight: Set<UUID> = []
 
-    public init() {}
+    public init(writer: any ArtistWriter = SupabaseArtistWriter()) {
+        self.writer = writer
+    }
 
     /// Drop cached artist rows and the resolved my-artist id. Called on
     /// sign-out so the next signed-in user resolves their own artist
@@ -214,166 +246,123 @@ public final class ArtistDetailStore {
 
     // MARK: — Mutations
 
-    /// Persist the given blocked-date set to public.artists. Encodes
-    /// as date strings (yyyy-MM-dd) — PostgREST casts them into the
-    /// date[] column server-side.
-    public func updateBlockedDates(_ dates: Set<Date>, for artistID: UUID) async {
+    /// Apply an optimistic mutation to the cached artist: snapshot,
+    /// merge → cache, mirror to state if currently shown, send to the
+    /// writer, restore the snapshot on failure. All public mutations
+    /// route through this so rollback behaviour is consistent.
+    private func optimisticPatch<Patch: Encodable & Sendable>(
+        _ artistID: UUID,
+        merge: (ArtistDetail) -> ArtistDetail,
+        patch: Patch
+    ) async {
         lastError = nil
-        // Optimistic local flip.
-        if let existing = cache[artistID] {
-            let merged = Self.withBlockedDates(existing, dates: dates)
+        let snapshot = cache[artistID]
+        if let existing = snapshot {
+            let merged = merge(existing)
             cache[artistID] = merged
             if case .loaded(let shown) = state, shown.id == artistID {
                 state = .loaded(merged)
             }
         }
+        do {
+            try await writer.patchArtist(patch, artistID: artistID)
+        } catch {
+            lastError = error.localizedDescription
+            // Roll back to the pre-mutation snapshot on failure so the
+            // UI doesn't keep showing a write that didn't land.
+            if let snapshot {
+                cache[artistID] = snapshot
+                if case .loaded(let shown) = state, shown.id == artistID {
+                    state = .loaded(snapshot)
+                }
+            }
+        }
+    }
 
+    /// Persist the given blocked-date set to public.artists. Encodes
+    /// as date strings (yyyy-MM-dd) — PostgREST casts them into the
+    /// date[] column server-side.
+    public func updateBlockedDates(_ dates: Set<Date>, for artistID: UUID) async {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = TimeZone(identifier: "UTC")
-        let sorted = dates.sorted()
-        let payload = sorted.map { formatter.string(from: $0) }
-
-        struct Patch: Encodable { let blocked_dates: [String] }
-        do {
-            _ = try await client
-                .from("artists")
-                .update(Patch(blocked_dates: payload))
-                .eq("id", value: artistID)
-                .execute()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        let payload = dates.sorted().map { formatter.string(from: $0) }
+        struct Patch: Encodable, Sendable { let blocked_dates: [String] }
+        await optimisticPatch(
+            artistID,
+            merge: { Self.withBlockedDates($0, dates: dates) },
+            patch: Patch(blocked_dates: payload)
+        )
     }
 
     /// Append a URL onto epk_gallery. The uploader already pushed the
     /// bytes to Storage; this just records the public URL so other
     /// screens (EPK, artist profile) can render it.
     public func addGalleryImageURL(_ url: String, for artistID: UUID) async {
-        lastError = nil
         var next = cache[artistID]?.galleryURLs ?? []
         guard !next.contains(url) else { return }
         next.append(url)
-        if let existing = cache[artistID] {
-            let merged = Self.withGalleryURLs(existing, urls: next)
-            cache[artistID] = merged
-            if case .loaded(let shown) = state, shown.id == artistID {
-                state = .loaded(merged)
-            }
-        }
-        struct Patch: Encodable { let epk_gallery: [String] }
-        do {
-            _ = try await client
-                .from("artists")
-                .update(Patch(epk_gallery: next))
-                .eq("id", value: artistID)
-                .execute()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        struct Patch: Encodable, Sendable { let epk_gallery: [String] }
+        await optimisticPatch(
+            artistID,
+            merge: { Self.withGalleryURLs($0, urls: next) },
+            patch: Patch(epk_gallery: next)
+        )
     }
 
     /// Remove a URL from epk_gallery. The Storage object itself stays —
     /// dropping the reference is cheap and cleanup can be a cron job
     /// later. Tapping the ✕ on a thumbnail routes here.
     public func removeGalleryImage(_ url: String, for artistID: UUID) async {
-        lastError = nil
         var next = cache[artistID]?.galleryURLs ?? []
         next.removeAll { $0 == url }
-        if let existing = cache[artistID] {
-            let merged = Self.withGalleryURLs(existing, urls: next)
-            cache[artistID] = merged
-            if case .loaded(let shown) = state, shown.id == artistID {
-                state = .loaded(merged)
-            }
-        }
-        struct Patch: Encodable { let epk_gallery: [String] }
-        do {
-            _ = try await client
-                .from("artists")
-                .update(Patch(epk_gallery: next))
-                .eq("id", value: artistID)
-                .execute()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        struct Patch: Encodable, Sendable { let epk_gallery: [String] }
+        await optimisticPatch(
+            artistID,
+            merge: { Self.withGalleryURLs($0, urls: next) },
+            patch: Patch(epk_gallery: next)
+        )
     }
 
     /// Patch rider_url with the public URL of a newly-uploaded PDF.
     /// Pass nil to detach the current rider.
     public func updateRiderURL(_ url: String?, for artistID: UUID) async {
-        lastError = nil
-        if let existing = cache[artistID] {
-            let merged = Self.withRiderURL(existing, url: url)
-            cache[artistID] = merged
-            if case .loaded(let shown) = state, shown.id == artistID {
-                state = .loaded(merged)
-            }
-        }
-        struct Patch: Encodable { let rider_url: String? }
-        do {
-            _ = try await client
-                .from("artists")
-                .update(Patch(rider_url: url))
-                .eq("id", value: artistID)
-                .execute()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        struct Patch: Encodable, Sendable { let rider_url: String? }
+        await optimisticPatch(
+            artistID,
+            merge: { Self.withRiderURL($0, url: url) },
+            patch: Patch(rider_url: url)
+        )
     }
 
     /// Persist the tour_mode flag on public.artists. Powers the
     /// "Flexible on travel" toggle in AvailabilityView.
     public func updateTourMode(_ on: Bool, for artistID: UUID) async {
-        lastError = nil
-        if let existing = cache[artistID] {
-            let merged = Self.withTourMode(existing, tourMode: on)
-            cache[artistID] = merged
-            if case .loaded(let shown) = state, shown.id == artistID {
-                state = .loaded(merged)
-            }
-        }
-        struct Patch: Encodable { let tour_mode: Bool }
-        do {
-            _ = try await client
-                .from("artists")
-                .update(Patch(tour_mode: on))
-                .eq("id", value: artistID)
-                .execute()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        struct Patch: Encodable, Sendable { let tour_mode: Bool }
+        await optimisticPatch(
+            artistID,
+            merge: { Self.withTourMode($0, tourMode: on) },
+            patch: Patch(tour_mode: on)
+        )
     }
 
     /// Persist a new base_fee on public.artists. Caller passes the raw
     /// fee (e.g. 28_000, not 28K).
     public func updateBaseFee(_ fee: Decimal, for artistID: UUID) async {
-        lastError = nil
-        if let existing = cache[artistID] {
-            let merged = Self.withBaseFee(existing, fee: fee)
-            cache[artistID] = merged
-            if case .loaded(let shown) = state, shown.id == artistID {
-                state = .loaded(merged)
-            }
-        }
         // Send Decimal as a JSON string ("12345.67"); PostgREST casts
         // string → numeric for us. Avoids the Decimal→Double round-trip
         // that loses precision past ~15 significant digits.
-        struct Patch: Encodable {
+        struct Patch: Encodable, Sendable {
             let base_fee: String
             init(_ fee: Decimal) {
                 self.base_fee = NSDecimalNumber(decimal: fee).stringValue
             }
         }
-        do {
-            _ = try await client
-                .from("artists")
-                .update(Patch(fee))
-                .eq("id", value: artistID)
-                .execute()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        await optimisticPatch(
+            artistID,
+            merge: { Self.withBaseFee($0, fee: fee) },
+            patch: Patch(fee)
+        )
     }
 
     /// Persist a subset of the stage_name / genre / social_links fields.
@@ -384,20 +373,7 @@ public final class ArtistDetailStore {
         primaryGenre: String? = nil,
         social: ArtistDTO.SocialLinks? = nil
     ) async {
-        lastError = nil
-        if let existing = cache[artistID] {
-            let merged = Self.withProfileCore(
-                existing,
-                stageName: stageName,
-                primaryGenre: primaryGenre,
-                social: social
-            )
-            cache[artistID] = merged
-            if case .loaded(let shown) = state, shown.id == artistID {
-                state = .loaded(merged)
-            }
-        }
-        struct Patch: Encodable {
+        struct Patch: Encodable, Sendable {
             let stage_name: String?
             let genre: [String]?
             let social_links: ArtistDTO.SocialLinks?
@@ -408,15 +384,18 @@ public final class ArtistDetailStore {
             genre: genrePatch,
             social_links: social
         )
-        do {
-            _ = try await client
-                .from("artists")
-                .update(patch)
-                .eq("id", value: artistID)
-                .execute()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        await optimisticPatch(
+            artistID,
+            merge: {
+                Self.withProfileCore(
+                    $0,
+                    stageName: stageName,
+                    primaryGenre: primaryGenre,
+                    social: social
+                )
+            },
+            patch: patch
+        )
     }
 
     // MARK: — Value-type merges

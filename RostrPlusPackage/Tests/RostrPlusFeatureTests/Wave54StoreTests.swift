@@ -111,7 +111,7 @@ struct ArtistDetailStoreMutationsTests {
 
     @Test("updateBlockedDates optimistically updates cache + state")
     func blockedDatesOptimistic() async {
-        let store = ArtistDetailStore()
+        let store = ArtistDetailStore(writer: NoopArtistWriter())
         let id = UUID()
         store._testLoad(detail(id: id))
         let today = Calendar.current.startOfDay(for: Date())
@@ -122,7 +122,7 @@ struct ArtistDetailStoreMutationsTests {
 
     @Test("updateBaseFee optimistically updates cache + state")
     func baseFeeOptimistic() async {
-        let store = ArtistDetailStore()
+        let store = ArtistDetailStore(writer: NoopArtistWriter())
         let id = UUID()
         store._testLoad(detail(id: id, baseFee: 20_000))
         await store.updateBaseFee(45_000, for: id)
@@ -131,7 +131,7 @@ struct ArtistDetailStoreMutationsTests {
 
     @Test("updateProfileCore rewrites stage name + primary genre + social")
     func profileCoreOptimistic() async {
-        let store = ArtistDetailStore()
+        let store = ArtistDetailStore(writer: NoopArtistWriter())
         let id = UUID()
         store._testLoad(detail(id: id, stageName: "Old", genre: "Deep House"))
         let social = ArtistDTO.SocialLinks(instagram: "@new", soundcloud: nil, spotify: nil)
@@ -149,11 +149,49 @@ struct ArtistDetailStoreMutationsTests {
 
     @Test("updateProfileCore with nil fields preserves existing values")
     func profileCorePartial() async {
-        let store = ArtistDetailStore()
+        let store = ArtistDetailStore(writer: NoopArtistWriter())
         let id = UUID()
         store._testLoad(detail(id: id, stageName: "Keep", genre: "Keep"))
         await store.updateProfileCore(artistID: id, stageName: nil, primaryGenre: nil, social: nil)
         #expect(store.cache[id]?.stageName == "Keep")
         #expect(store.cache[id]?.genres.first == "Keep")
+    }
+
+    @Test("updateBaseFee rolls back on writer failure")
+    func baseFeeRollback() async {
+        let store = ArtistDetailStore(writer: FailingArtistWriter())
+        let id = UUID()
+        store._testLoad(detail(id: id, baseFee: 20_000))
+        await store.updateBaseFee(45_000, for: id)
+        // Optimistic flip happened, writer threw, cache rolled back.
+        #expect(store.cache[id]?.baseFee == 20_000)
+        #expect(store.lastError != nil)
+    }
+
+    @Test("updateProfileCore rolls back on writer failure")
+    func profileCoreRollback() async {
+        let store = ArtistDetailStore(writer: FailingArtistWriter())
+        let id = UUID()
+        store._testLoad(detail(id: id, stageName: "Old", genre: "Old"))
+        await store.updateProfileCore(
+            artistID: id,
+            stageName: "NEW",
+            primaryGenre: "NewGenre",
+            social: nil
+        )
+        #expect(store.cache[id]?.stageName == "Old")
+        #expect(store.cache[id]?.genres.first == "Old")
+        #expect(store.lastError != nil)
+    }
+
+    @Test("updateBlockedDates rolls back on writer failure")
+    func blockedDatesRollback() async {
+        let store = ArtistDetailStore(writer: FailingArtistWriter())
+        let id = UUID()
+        store._testLoad(detail(id: id))
+        let today = Calendar.current.startOfDay(for: Date())
+        await store.updateBlockedDates([today], for: id)
+        #expect(store.cache[id]?.blockedDates == [])
+        #expect(store.lastError != nil)
     }
 }
