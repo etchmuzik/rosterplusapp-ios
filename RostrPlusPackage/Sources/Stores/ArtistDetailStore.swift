@@ -126,6 +126,7 @@ public final class ArtistDetailStore {
                 .from("artists")
                 .select("id")
                 .eq("profile_id", value: userID)
+                .is("deleted_at", value: nil)
                 .limit(1)
                 .execute()
                 .value
@@ -161,6 +162,7 @@ public final class ArtistDetailStore {
                     .from("artists")
                     .select(ArtistDTO.selectFieldsDetail)
                     .eq("id", value: id)
+                    .is("deleted_at", value: nil)
                     .single()
                     .execute()
                     .value

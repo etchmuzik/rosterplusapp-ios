@@ -70,6 +70,7 @@ public final class RosterStore {
                     .from("artists")
                     .select(ArtistDTO.selectFields)
                     .eq("status", value: "active")
+                    .is("deleted_at", value: nil)
                     .order("stage_name", ascending: true)
                     .execute()
                     .value
