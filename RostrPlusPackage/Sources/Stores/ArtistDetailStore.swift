@@ -354,17 +354,19 @@ public final class ArtistDetailStore {
                 state = .loaded(merged)
             }
         }
-        // PostgREST round-trips numerics as JSON numbers; serialise via
-        // NSDecimalNumber → Double for the wire because Decimal isn't
-        // directly Encodable to a JSON number. The canonical column is
-        // numeric on the server, so fractional cents survive intact at
-        // the values we deal with (≤ AED 1M, well within Double's
-        // precision).
-        struct Patch: Encodable { let base_fee: Double }
+        // Send Decimal as a JSON string ("12345.67"); PostgREST casts
+        // string → numeric for us. Avoids the Decimal→Double round-trip
+        // that loses precision past ~15 significant digits.
+        struct Patch: Encodable {
+            let base_fee: String
+            init(_ fee: Decimal) {
+                self.base_fee = NSDecimalNumber(decimal: fee).stringValue
+            }
+        }
         do {
             _ = try await client
                 .from("artists")
-                .update(Patch(base_fee: NSDecimalNumber(decimal: fee).doubleValue))
+                .update(Patch(fee))
                 .eq("id", value: artistID)
                 .execute()
         } catch {
