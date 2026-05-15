@@ -52,6 +52,12 @@ public final class BookingsStore {
     /// BookingDetailView can read synchronously once it's prefetched.
     public private(set) var detailCache: [UUID: BookingRow] = [:]
 
+    /// Per-id last-error map for detail fetches. Set when a fetch
+    /// fails; cleared when the same id loads successfully or the store
+    /// is reset. Lets BookingDetailView render a real FailureCard
+    /// instead of a forever-skeleton when a deep-link landing fails.
+    public private(set) var detailErrors: [UUID: String] = [:]
+
     private let client = RostrSupabase.shared
     private var inFlight: Task<Void, Never>?
     private var detailInFlight: Set<UUID> = []
@@ -66,6 +72,7 @@ public final class BookingsStore {
         inFlight = nil
         detailInFlight.removeAll()
         detailCache.removeAll()
+        detailErrors.removeAll()
         state = .idle
     }
 
@@ -144,13 +151,18 @@ public final class BookingsStore {
                     .from("bookings")
                     .select(BookingDTO.selectFields)
                     .eq("id", value: id)
+                    .is("deleted_at", value: nil)
                     .single()
                     .execute()
                     .value
                 self.detailCache[id] = Self.rowFromDTO(row)
+                self.detailErrors[id] = nil
             } catch {
-                // Silent failure — detail view falls through to a
-                // "couldn't load" state using state != .loaded.
+                // Surface the failure so BookingDetailView can render a
+                // FailureCard with a retry CTA — push deep-links land
+                // here, so a network blip can't strand the user on a
+                // forever-skeleton.
+                self.detailErrors[id] = error.localizedDescription
             }
         }
     }

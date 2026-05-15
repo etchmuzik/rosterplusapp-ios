@@ -51,6 +51,13 @@ public struct BookingDetailView: View {
                     }
                     .padding(.horizontal, R.S.lg)
                     .padding(.top, R.S.sm)
+                } else if let id = resolvedUUID, let message = bookings.detailErrors[id] {
+                    FailureCard(heading: S.State.errorBooking, message: message) {
+                        bookings.fetchDetail(id: id)
+                        timelineStore.fetch(for: id)
+                    }
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.top, R.S.lg)
                 } else {
                     loadingPlaceholder
                         .padding(.horizontal, R.S.lg)

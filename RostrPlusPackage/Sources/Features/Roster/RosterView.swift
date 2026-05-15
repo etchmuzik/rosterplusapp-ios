@@ -151,7 +151,7 @@ public struct RosterView: View {
         case .idle, .loading:
             SkeletonGrid()
         case .failed(let message):
-            FailureCard(message: message) { store.refresh() }
+            FailureCard(heading: S.State.errorRoster, message: message) { store.refresh() }
         case .loaded:
             grid
         }
@@ -269,35 +269,6 @@ private struct SkeletonGrid: View {
                 .redacted(reason: .placeholder)
             }
         }
-    }
-}
-
-// MARK: - Failure card
-
-private struct FailureCard: View {
-    let message: String
-    let retry: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: R.S.sm) {
-            HStack(spacing: R.S.sm) {
-                Image(systemName: "wifi.exclamationmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(R.C.red)
-                Text(S.State.errorRoster)
-                    .font(R.F.body(14, weight: .semibold))
-                    .foregroundStyle(R.C.fg1)
-            }
-            Text(message)
-                .font(R.F.body(12, weight: .regular))
-                .foregroundStyle(R.C.fg3)
-                .lineLimit(3)
-            PrimaryButton(S.Common.tryAgain, variant: .ghost) {
-                retry()
-            }
-        }
-        .padding(R.S.md)
-        .glassSurface(cornerRadius: R.Rad.card)
     }
 }
 

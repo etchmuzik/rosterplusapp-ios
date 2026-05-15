@@ -2,174 +2,19 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
-    "common.back": {
-      "comment": "Back button label across all detail headers (NavHeader).",
+    "auth.forgotpassword": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Back"
+            "value": "Forgot password?"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "رجوع"
-          }
-        }
-      }
-    },
-    "common.cancel": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إلغاء"
-          }
-        }
-      }
-    },
-    "common.save": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "حفظ"
-          }
-        }
-      }
-    },
-    "common.done": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Done"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تم"
-          }
-        }
-      }
-    },
-    "common.retry": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retry"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إعادة المحاولة"
-          }
-        }
-      }
-    },
-    "tab.home": {
-      "comment": "Tab bar — first tab. 'Tonight' connotation in EN; mirrored to a single-word ar label.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Home"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الرئيسية"
-          }
-        }
-      }
-    },
-    "tab.roster": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Roster"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الفنانون"
-          }
-        }
-      }
-    },
-    "tab.bookings": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bookings"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الحجوزات"
-          }
-        }
-      }
-    },
-    "tab.inbox": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inbox"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الرسائل"
-          }
-        }
-      }
-    },
-    "tab.me": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Me"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "حسابي"
+            "value": "نسيت كلمة المرور؟"
           }
         }
       }
@@ -191,23 +36,6 @@
         }
       }
     },
-    "auth.signup": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Create account"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إنشاء حساب"
-          }
-        }
-      }
-    },
     "auth.signout": {
       "extractionState": "manual",
       "localizations": {
@@ -225,605 +53,19 @@
         }
       }
     },
-    "auth.forgotpassword": {
+    "auth.signup": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Forgot password?"
+            "value": "Create account"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "نسيت كلمة المرور؟"
-          }
-        }
-      }
-    },
-    "cta.book": {
-      "comment": "Primary booking CTA used across Artist, EPK, and quick-book flows.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Book via ROSTR+"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "احجز عبر ROSTR+"
-          }
-        }
-      }
-    },
-    "cta.message": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Message"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مراسلة"
-          }
-        }
-      }
-    },
-    "cta.share": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Share"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مشاركة"
-          }
-        }
-      }
-    },
-    "state.loading": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loading…"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "جارٍ التحميل…"
-          }
-        }
-      }
-    },
-    "state.empty.bookings": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No bookings yet"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا توجد حجوزات بعد"
-          }
-        }
-      }
-    },
-    "state.empty.inbox": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No conversations yet"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا توجد محادثات بعد"
-          }
-        }
-      }
-    },
-    "state.offline": {
-      "comment": "Offline banner — must stay terse to fit the slim banner.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You're offline"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "أنت غير متصل"
-          }
-        }
-      }
-    },
-    "epk.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "EPK"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الملف الترويجي"
-          }
-        }
-      }
-    },
-    "calendar.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calendar"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "التقويم"
-          }
-        }
-      }
-    },
-    "notifications.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notifications"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الإشعارات"
-          }
-        }
-      }
-    },
-    "home.greeting.evening": {
-      "comment": "Home greeting — evening time-of-day. Comma is intentional (line continues with the user name on the next Text).",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Good evening,"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مساء الخير،"
-          }
-        }
-      }
-    },
-    "home.upNext": {
-      "comment": "Home — section header above the next-3 bookings list.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Up next"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "القادم"
-          }
-        }
-      }
-    },
-    "home.allBookings": {
-      "comment": "Home — link/button to navigate from \"Up next\" to the full bookings list.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All bookings"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "كل الحجوزات"
-          }
-        }
-      }
-    },
-    "home.empty.cta": {
-      "comment": "Home empty state — CTA button when user has no upcoming bookings.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Book an artist"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "احجز فناناً"
-          }
-        }
-      }
-    },
-    "home.empty.calendar": {
-      "comment": "Home — calendar block empty state (no events scheduled).",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nothing scheduled yet."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا توجد مواعيد بعد."
-          }
-        }
-      }
-    },
-    "inbox.empty.title": {
-      "comment": "Inbox empty state — heading shown when user has zero threads.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No conversations yet"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا توجد محادثات بعد"
-          }
-        }
-      }
-    },
-    "inbox.empty.body": {
-      "comment": "Inbox empty state — body copy below the heading.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Messages about a booking land here."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تظهر هنا الرسائل المتعلقة بالحجوزات."
-          }
-        }
-      }
-    },
-    "inbox.error.title": {
-      "comment": "Inbox error state — heading when the initial fetch fails.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn’t load inbox"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تعذّر تحميل البريد الوارد"
-          }
-        }
-      }
-    },
-    "cta.openBooking": {
-      "comment": "CTA — navigates from a card to the full booking detail screen.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open booking"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "فتح الحجز"
-          }
-        }
-      }
-    },
-    "cta.browseRoster": {
-      "comment": "CTA — navigates to the artists directory (used in empty states + Home).",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Browse roster"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تصفّح القائمة"
-          }
-        }
-      }
-    },
-    "state.empty.upcomingBookings": {
-      "comment": "Empty state — bookings list when there are no future bookings scheduled.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No upcoming bookings"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا توجد حجوزات قادمة"
-          }
-        }
-      }
-    },
-    "home.empty.body": {
-      "comment": "Home empty state — body copy below the \"Book an artist\" heading.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your next gig will land here the moment you send a request."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "سيظهر حجزك القادم هنا بمجرد إرسال الطلب."
-          }
-        }
-      }
-    },
-    "common.edit": {
-      "comment": "Generic edit affordance — Settings header, profile fields.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edit"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تعديل"
-          }
-        }
-      }
-    },
-    "common.skip": {
-      "comment": "Skip button — Onboarding intro slides.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Skip"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تخطّي"
-          }
-        }
-      }
-    },
-    "common.tryAgain": {
-      "comment": "Retry CTA used on error states (Roster, etc.). Distinct from common.retry which is a generic verb.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Try again"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "حاول مجدّداً"
-          }
-        }
-      }
-    },
-    "common.all": {
-      "comment": "Generic \"All\" link — Artist Dashboard \"All\" link above upcoming gigs.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الكل"
-          }
-        }
-      }
-    },
-    "cta.requestBooking": {
-      "comment": "Primary CTA on Artist detail — initiates the booking request flow.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Request booking"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "طلب حجز"
-          }
-        }
-      }
-    },
-    "cta.messageArtist": {
-      "comment": "Secondary CTA — open thread with the artist from BookingDetail.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Message artist"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مراسلة الفنان"
-          }
-        }
-      }
-    },
-    "cta.viewContract": {
-      "comment": "BookingDetail CTA — opens the performance agreement.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "View contract"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "عرض العقد"
-          }
-        }
-      }
-    },
-    "cta.viewInvoice": {
-      "comment": "BookingDetail CTA — opens the invoice screen.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "View invoice"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "عرض الفاتورة"
-          }
-        }
-      }
-    },
-    "cta.sendMessage": {
-      "comment": "Thread send-message button — VoiceOver label on the paper-plane icon.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Send message"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إرسال الرسالة"
-          }
-        }
-      }
-    },
-    "booking.timeline": {
-      "comment": "BookingDetail section header — chronological list of events on the booking.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Timeline"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الجدول الزمني"
-          }
-        }
-      }
-    },
-    "booking.empty.timeline": {
-      "comment": "BookingDetail timeline empty state.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No events yet."
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا توجد أحداث بعد."
+            "value": "إنشاء حساب"
           }
         }
       }
@@ -864,6 +106,609 @@
         }
       }
     },
+    "booking.empty.timeline": {
+      "comment": "BookingDetail timeline empty state.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No events yet."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد أحداث بعد."
+          }
+        }
+      }
+    },
+    "booking.timeline": {
+      "comment": "BookingDetail section header — chronological list of events on the booking.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timeline"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجدول الزمني"
+          }
+        }
+      }
+    },
+    "calendar.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendar"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التقويم"
+          }
+        }
+      }
+    },
+    "common.all": {
+      "comment": "Generic \"All\" link — Artist Dashboard \"All\" link above upcoming gigs.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الكل"
+          }
+        }
+      }
+    },
+    "common.back": {
+      "comment": "Back button label across all detail headers (NavHeader).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رجوع"
+          }
+        }
+      }
+    },
+    "common.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلغاء"
+          }
+        }
+      }
+    },
+    "common.done": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم"
+          }
+        }
+      }
+    },
+    "common.edit": {
+      "comment": "Generic edit affordance — Settings header, profile fields.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعديل"
+          }
+        }
+      }
+    },
+    "common.retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعادة المحاولة"
+          }
+        }
+      }
+    },
+    "common.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حفظ"
+          }
+        }
+      }
+    },
+    "common.skip": {
+      "comment": "Skip button — Onboarding intro slides.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تخطّي"
+          }
+        }
+      }
+    },
+    "common.tryAgain": {
+      "comment": "Retry CTA used on error states (Roster, etc.). Distinct from common.retry which is a generic verb.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حاول مجدّداً"
+          }
+        }
+      }
+    },
+    "cta.book": {
+      "comment": "Primary booking CTA used across Artist, EPK, and quick-book flows.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Book via ROSTR+"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "احجز عبر ROSTR+"
+          }
+        }
+      }
+    },
+    "cta.browseRoster": {
+      "comment": "CTA — navigates to the artists directory (used in empty states + Home).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browse roster"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تصفّح القائمة"
+          }
+        }
+      }
+    },
+    "cta.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مراسلة"
+          }
+        }
+      }
+    },
+    "cta.messageArtist": {
+      "comment": "Secondary CTA — open thread with the artist from BookingDetail.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Message artist"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مراسلة الفنان"
+          }
+        }
+      }
+    },
+    "cta.openBooking": {
+      "comment": "CTA — navigates from a card to the full booking detail screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open booking"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فتح الحجز"
+          }
+        }
+      }
+    },
+    "cta.requestBooking": {
+      "comment": "Primary CTA on Artist detail — initiates the booking request flow.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request booking"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طلب حجز"
+          }
+        }
+      }
+    },
+    "cta.sendMessage": {
+      "comment": "Thread send-message button — VoiceOver label on the paper-plane icon.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send message"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إرسال الرسالة"
+          }
+        }
+      }
+    },
+    "cta.share": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مشاركة"
+          }
+        }
+      }
+    },
+    "cta.viewContract": {
+      "comment": "BookingDetail CTA — opens the performance agreement.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View contract"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرض العقد"
+          }
+        }
+      }
+    },
+    "cta.viewInvoice": {
+      "comment": "BookingDetail CTA — opens the invoice screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View invoice"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرض الفاتورة"
+          }
+        }
+      }
+    },
+    "epk.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EPK"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الملف الترويجي"
+          }
+        }
+      }
+    },
+    "home.allBookings": {
+      "comment": "Home — link/button to navigate from \"Up next\" to the full bookings list.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All bookings"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كل الحجوزات"
+          }
+        }
+      }
+    },
+    "home.empty.body": {
+      "comment": "Home empty state — body copy below the \"Book an artist\" heading.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your next gig will land here the moment you send a request."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سيظهر حجزك القادم هنا بمجرد إرسال الطلب."
+          }
+        }
+      }
+    },
+    "home.empty.calendar": {
+      "comment": "Home — calendar block empty state (no events scheduled).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing scheduled yet."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد مواعيد بعد."
+          }
+        }
+      }
+    },
+    "home.empty.cta": {
+      "comment": "Home empty state — CTA button when user has no upcoming bookings.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Book an artist"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "احجز فناناً"
+          }
+        }
+      }
+    },
+    "home.greeting.evening": {
+      "comment": "Home greeting — evening time-of-day. Comma is intentional (line continues with the user name on the next Text).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good evening,"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مساء الخير،"
+          }
+        }
+      }
+    },
+    "home.upNext": {
+      "comment": "Home — section header above the next-3 bookings list.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up next"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "القادم"
+          }
+        }
+      }
+    },
+    "inbox.empty.body": {
+      "comment": "Inbox empty state — body copy below the heading.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messages about a booking land here."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تظهر هنا الرسائل المتعلقة بالحجوزات."
+          }
+        }
+      }
+    },
+    "inbox.empty.title": {
+      "comment": "Inbox empty state — heading shown when user has zero threads.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No conversations yet"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد محادثات بعد"
+          }
+        }
+      }
+    },
+    "inbox.error.title": {
+      "comment": "Inbox error state — heading when the initial fetch fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load inbox"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل البريد الوارد"
+          }
+        }
+      }
+    },
+    "notifications.markRead": {
+      "comment": "Notifications — \"Mark read\" affordance on a single notification card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mark read"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديد كمقروء"
+          }
+        }
+      }
+    },
+    "notifications.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإشعارات"
+          }
+        }
+      }
+    },
     "section.about": {
       "comment": "Generic \"About\" section header — EPK and Artist detail.",
       "extractionState": "manual",
@@ -878,6 +723,42 @@
           "stringUnit": {
             "state": "translated",
             "value": "نبذة"
+          }
+        }
+      }
+    },
+    "section.bookingRequests": {
+      "comment": "Artist Dashboard section header — pending booking requests.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Booking requests"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "طلبات الحجز"
+          }
+        }
+      }
+    },
+    "section.pastPerformances": {
+      "comment": "EPK section header — past gigs list.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Past performances"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العروض السابقة"
           }
         }
       }
@@ -918,24 +799,6 @@
         }
       }
     },
-    "section.pastPerformances": {
-      "comment": "EPK section header — past gigs list.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Past performances"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "العروض السابقة"
-          }
-        }
-      }
-    },
     "section.upcomingGigs": {
       "comment": "Artist Dashboard section header — upcoming bookings.",
       "extractionState": "manual",
@@ -954,38 +817,36 @@
         }
       }
     },
-    "section.bookingRequests": {
-      "comment": "Artist Dashboard section header — pending booking requests.",
+    "state.empty.bookings": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Booking requests"
+            "value": "No bookings yet"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "طلبات الحجز"
+            "value": "لا توجد حجوزات بعد"
           }
         }
       }
     },
-    "state.empty.upcomingGigs": {
-      "comment": "Artist Dashboard — empty state for the upcoming-gigs section.",
+    "state.empty.inbox": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No upcoming gigs booked yet."
+            "value": "No conversations yet"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لا توجد عروض قادمة بعد."
+            "value": "لا توجد محادثات بعد"
           }
         }
       }
@@ -1004,6 +865,42 @@
           "stringUnit": {
             "state": "translated",
             "value": "لم تُضف أي عروض سابقة بعد."
+          }
+        }
+      }
+    },
+    "state.empty.payments.body": {
+      "comment": "Payments empty state — body copy below the heading.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paid bookings show up the moment the transfer lands."
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تظهر الحجوزات المدفوعة بمجرد وصول التحويل."
+          }
+        }
+      }
+    },
+    "state.empty.payments.title": {
+      "comment": "Payments empty state — heading.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No payments here yet"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد مدفوعات بعد"
           }
         }
       }
@@ -1044,38 +941,56 @@
         }
       }
     },
-    "state.empty.payments.title": {
-      "comment": "Payments empty state — heading.",
+    "state.empty.upcomingBookings": {
+      "comment": "Empty state — bookings list when there are no future bookings scheduled.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No payments here yet"
+            "value": "No upcoming bookings"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لا توجد مدفوعات بعد"
+            "value": "لا توجد حجوزات قادمة"
           }
         }
       }
     },
-    "state.empty.payments.body": {
-      "comment": "Payments empty state — body copy below the heading.",
+    "state.empty.upcomingGigs": {
+      "comment": "Artist Dashboard — empty state for the upcoming-gigs section.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paid bookings show up the moment the transfer lands."
+            "value": "No upcoming gigs booked yet."
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تظهر الحجوزات المدفوعة بمجرد وصول التحويل."
+            "value": "لا توجد عروض قادمة بعد."
+          }
+        }
+      }
+    },
+    "state.error.booking": {
+      "comment": "Booking detail error state — heading when the booking fetch fails (e.g. push deep-link landing).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load this booking"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل تفاصيل الحجز"
           }
         }
       }
@@ -1098,20 +1013,20 @@
         }
       }
     },
-    "state.error.payments": {
-      "comment": "Payments error state — heading when the initial fetch fails.",
+    "state.error.epk": {
+      "comment": "EPK error state — heading when the public EPK fetch fails.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn’t load payments"
+            "value": "Couldn’t load this EPK"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تعذّر تحميل المدفوعات"
+            "value": "تعذّر تحميل ملف الفنان"
           }
         }
       }
@@ -1134,6 +1049,42 @@
         }
       }
     },
+    "state.error.payments": {
+      "comment": "Payments error state — heading when the initial fetch fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load payments"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل المدفوعات"
+          }
+        }
+      }
+    },
+    "state.error.profile": {
+      "comment": "Artist profile error state — heading when the artist detail fetch fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load this artist"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل بيانات الفنان"
+          }
+        }
+      }
+    },
     "state.error.roster": {
       "comment": "Roster error state — heading when the directory fetch fails.",
       "extractionState": "manual",
@@ -1152,20 +1103,123 @@
         }
       }
     },
-    "notifications.markRead": {
-      "comment": "Notifications — \"Mark read\" affordance on a single notification card.",
+    "state.loading": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mark read"
+            "value": "Loading…"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تحديد كمقروء"
+            "value": "جارٍ التحميل…"
+          }
+        }
+      }
+    },
+    "state.offline": {
+      "comment": "Offline banner — must stay terse to fit the slim banner.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're offline"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أنت غير متصل"
+          }
+        }
+      }
+    },
+    "tab.bookings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bookings"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحجوزات"
+          }
+        }
+      }
+    },
+    "tab.home": {
+      "comment": "Tab bar — first tab. 'Tonight' connotation in EN; mirrored to a single-word ar label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الرئيسية"
+          }
+        }
+      }
+    },
+    "tab.inbox": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inbox"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الرسائل"
+          }
+        }
+      }
+    },
+    "tab.me": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Me"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حسابي"
+          }
+        }
+      }
+    },
+    "tab.roster": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roster"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الفنانون"
           }
         }
       }

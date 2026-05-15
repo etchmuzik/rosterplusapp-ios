@@ -75,6 +75,9 @@ public enum S {
         public static let errorPayments         = LocalizedStringResource("state.error.payments",          bundle: .atURL(Bundle.module.bundleURL))
         public static let errorNotifications    = LocalizedStringResource("state.error.notifications",     bundle: .atURL(Bundle.module.bundleURL))
         public static let errorRoster           = LocalizedStringResource("state.error.roster",            bundle: .atURL(Bundle.module.bundleURL))
+        public static let errorProfile          = LocalizedStringResource("state.error.profile",           bundle: .atURL(Bundle.module.bundleURL))
+        public static let errorEPK              = LocalizedStringResource("state.error.epk",               bundle: .atURL(Bundle.module.bundleURL))
+        public static let errorBooking          = LocalizedStringResource("state.error.booking",           bundle: .atURL(Bundle.module.bundleURL))
     }
 
     public enum Screen {

@@ -38,13 +38,19 @@ public struct ArtistView: View {
                             .padding(.horizontal, R.S.lg)
                         Color.clear.frame(height: 120)
                     }
+                } else if case .failed(let message) = store.state {
+                    FailureCard(heading: S.State.errorProfile, message: message) {
+                        store.fetch(id: artistID)
+                    }
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.top, R.S.xl)
                 } else {
                     loadingPlaceholder
                         .padding(.horizontal, R.S.lg)
                         .padding(.top, R.S.xl)
                 }
             }
-            stickyCTAs
+            if loaded != nil { stickyCTAs }
         }
         .background(R.C.bg0)
         .task {

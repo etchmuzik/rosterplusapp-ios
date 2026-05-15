@@ -96,13 +96,19 @@ public struct EPKView: View {
                         Color.clear.frame(height: 120)
                     }
                     .padding(.top, R.S.sm)
+                } else if case .failed(let message) = detail.state {
+                    FailureCard(heading: S.State.errorEPK, message: message) {
+                        if let id = resolvedID { detail.fetch(id: id) }
+                    }
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.top, R.S.xl)
                 } else {
                     loadingPlaceholder
                         .padding(.horizontal, R.S.lg)
                         .padding(.top, R.S.xl)
                 }
             }
-            contactCTA
+            if loaded != nil { contactCTA }
         }
         .background(R.C.bg0)
         .task {
