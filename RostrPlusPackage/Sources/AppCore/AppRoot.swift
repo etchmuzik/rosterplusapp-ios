@@ -122,6 +122,14 @@ public struct AppRoot: View {
         .preferredColorScheme(.dark)
         .task {
             await auth.loadSession()
+            #if DEBUG
+            // UI-test bridge: when launched with
+            //   -RostrAutoSignInEmail <email> -RostrAutoSignInPassword <pwd>
+            // skip the manual sign-in flow. Must run BEFORE
+            // startObserving (which is an infinite for-await loop).
+            // Available in Debug builds only.
+            await Self.autoSignInIfRequested(into: auth)
+            #endif
             await auth.startObserving()
         }
         .task {
@@ -227,6 +235,29 @@ public struct AppRoot: View {
         }
     }
 }
+
+// MARK: - UI-test sign-in bridge
+
+#if DEBUG
+extension AppRoot {
+    /// Read the launch arguments for UI-test auto-sign-in credentials
+    /// and drive AuthStore.signIn if present. No-op in shipping
+    /// builds — the whole extension is gated on #if DEBUG.
+    static func autoSignInIfRequested(into auth: AuthStore) async {
+        let args = ProcessInfo.processInfo.arguments
+        guard let emailIdx = args.firstIndex(of: "-RostrAutoSignInEmail"),
+              emailIdx + 1 < args.count,
+              let passwordIdx = args.firstIndex(of: "-RostrAutoSignInPassword"),
+              passwordIdx + 1 < args.count
+        else { return }
+        let email = args[emailIdx + 1]
+        let password = args[passwordIdx + 1]
+        guard email.contains("@"), password.count >= 8 else { return }
+        if case .signedIn = auth.state { return }
+        await auth.signIn(email: email, password: password)
+    }
+}
+#endif
 
 // MARK: - Loading
 
