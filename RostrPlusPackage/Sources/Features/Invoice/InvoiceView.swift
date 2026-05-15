@@ -1,33 +1,69 @@
 // InvoiceView.swift — Screen 23
 //
-// Tax invoice with line items, VAT, "paid" stamp. Port of
-// `InvoiceScreen` at ios-app.jsx line 2147. Layout:
+// Tax invoice with line items, VAT, "paid" stamp. Reads live data
+// via InvoiceStore (one PaymentDTO per booking_id, RLS-scoped to the
+// promoter / artist parties). Renders three states:
 //
-//   NavHeader("Invoice")
-//   Card header  — ROSTR+ brand mark, "INVOICE", number, date
-//   From / To    — two-column company + artist blocks
-//   Line items   — table with label, qty, rate, total
-//   Totals       — subtotal, VAT (5%), total (display font, large)
-//   Paid stamp   — green rotated 18° overlay when status = paid
-//   Share CTA    — triggers system share sheet (stubbed)
+//   .loading  — neutral skeleton (no booking-specific copy)
+//   .failed   — shared FailureCard with retry CTA
+//   .loaded   — the real card with totals derived from the payment
+//
+// Share button (C8) opens the system share sheet with the public
+// invoice URL. The web invoice page accepts ?id=<bookingID>.
 
 import SwiftUI
 import DesignSystem
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public struct InvoiceView: View {
     @Bindable var nav: NavigationModel
+    @Environment(InvoiceStore.self) private var store
+    @Environment(AuthStore.self) private var auth
+    @Environment(ProfileStore.self) private var profile
     let bookingID: String
+
+    @State private var showingShareSheet = false
 
     public init(nav: NavigationModel, bookingID: String) {
         self.nav = nav
         self.bookingID = bookingID
     }
 
+    private var resolvedID: UUID? { UUID(uuidString: bookingID) }
+
+    private var loaded: Invoice? {
+        if let id = resolvedID { return store.cache[id] }
+        return nil
+    }
+
+    private var shareURL: URL? {
+        URL(string: "https://rosterplus.io/invoice.html?id=\(bookingID)")
+    }
+
+    private var billToName: String {
+        if let name = profile.current?.displayName, !name.isEmpty { return name }
+        if case .signedIn(_, let email, _) = auth.state, let local = email.split(separator: "@").first {
+            return String(local)
+        }
+        return "Account holder"
+    }
+
+    private var billToEmail: String? {
+        if let email = profile.current?.email, !email.isEmpty { return email }
+        if case .signedIn(_, let email, _) = auth.state, !email.isEmpty { return email }
+        return nil
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             NavHeader(title: "Invoice", onBack: { nav.pop() }) {
                 Button {
-                    // Share sheet wires in later wave
+                    #if canImport(UIKit)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    #endif
+                    showingShareSheet = true
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 14, weight: .semibold))
@@ -44,40 +80,71 @@ public struct InvoiceView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Share invoice")
+                .disabled(loaded == nil || shareURL == nil)
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    invoiceCard
+                    content
                         .padding(R.S.lg)
                     Color.clear.frame(height: R.S.huge)
                 }
             }
         }
         .background(R.C.bg0)
+        .task {
+            if let id = resolvedID {
+                store.fetch(bookingID: id, billToName: billToName, billToEmail: billToEmail)
+            }
+        }
+        #if canImport(UIKit)
+        .sheet(isPresented: $showingShareSheet) {
+            if let url = shareURL, let invoice = loaded {
+                let label = invoice.invoiceNumber ?? "ROSTR+ invoice"
+                ShareSheet(items: ["\(label) — view your ROSTR+ invoice", url])
+            }
+        }
+        #endif
+    }
+
+    // MARK: — Content router
+
+    @ViewBuilder
+    private var content: some View {
+        if let invoice = loaded {
+            invoiceCard(invoice)
+        } else if case .failed(let message) = store.state {
+            FailureCard(heading: S.State.errorBooking, message: message) {
+                if let id = resolvedID {
+                    store.fetch(bookingID: id, billToName: billToName, billToEmail: billToEmail)
+                }
+            }
+        } else {
+            invoiceSkeleton
+        }
     }
 
     // MARK: — Invoice card
 
-    private var invoiceCard: some View {
+    private func invoiceCard(_ invoice: Invoice) -> some View {
         VStack(alignment: .leading, spacing: R.S.lg) {
-            cardHeader
+            cardHeader(invoice)
             Divider().overlay(R.C.borderSoft)
-            fromTo
+            fromTo(invoice)
             Divider().overlay(R.C.borderSoft)
-            lineItems
+            lineItems(invoice)
             Divider().overlay(R.C.borderSoft)
-            totals
+            totals(invoice)
         }
         .padding(R.S.lg)
         .glassSurface(cornerRadius: R.Rad.card3)
         .overlay(alignment: .topTrailing) {
-            paidStamp
+            if invoice.status == .paid { paidStamp }
         }
     }
 
     // MARK: — Card header
 
-    private var cardHeader: some View {
+    private func cardHeader(_ invoice: Invoice) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("ROSTR+")
@@ -91,11 +158,11 @@ public struct InvoiceView: View {
             VStack(alignment: .trailing, spacing: 4) {
                 Text("INVOICE")
                     .monoLabel(size: 10, tracking: 1.2, color: R.C.fg3)
-                Text("RP-2026-0124")
+                Text(invoice.invoiceNumber ?? "—")
                     .font(R.F.mono(12, weight: .semibold))
                     .tracking(0.4)
                     .foregroundStyle(R.C.fg1)
-                Text("24 Apr 2026")
+                Text(formatDate(invoice.issuedAt ?? invoice.eventDate))
                     .monoLabel(size: 9, tracking: 0.5, color: R.C.fg3)
             }
         }
@@ -103,15 +170,23 @@ public struct InvoiceView: View {
 
     // MARK: — From / To
 
-    private var fromTo: some View {
+    private func fromTo(_ invoice: Invoice) -> some View {
         HStack(alignment: .top, spacing: R.S.lg) {
             addressBlock(
                 label: "From",
-                lines: ["Beyond Concierge Events Co. LLC", "Dubai Design District", "VAT TRN: 100234567800003"]
+                lines: [
+                    "Beyond Concierge Events Co. LLC",
+                    "Dubai Design District",
+                    "VAT TRN: 100234567800003"
+                ]
             )
             addressBlock(
                 label: "Bill to",
-                lines: ["DJ NOVAK / Artist", "Self-billed", "Dubai, UAE"]
+                lines: [
+                    invoice.billToName,
+                    invoice.billToEmail ?? "—",
+                    invoice.venueName ?? "—"
+                ]
             )
         }
     }
@@ -132,51 +207,42 @@ public struct InvoiceView: View {
 
     // MARK: — Line items
 
-    private var lineItems: some View {
+    private func lineItems(_ invoice: Invoice) -> some View {
         VStack(spacing: R.S.xs) {
-            // Column headers
             HStack {
                 Text("Description").monoLabel(size: 9, tracking: 0.6, color: R.C.fg3)
                 Spacer()
                 Text("Qty").monoLabel(size: 9, tracking: 0.6, color: R.C.fg3).frame(width: 30)
-                Text("Amount").monoLabel(size: 9, tracking: 0.6, color: R.C.fg3).frame(width: 90, alignment: .trailing)
+                Text("Amount").monoLabel(size: 9, tracking: 0.6, color: R.C.fg3).frame(width: 110, alignment: .trailing)
             }
             .padding(.bottom, 4)
 
-            Line(label: "DJ Performance — 4 hours", qty: "1", amount: "AED 25,000")
-            Line(label: "Rider (hospitality)",       qty: "1", amount: "AED 1,500")
-            Line(label: "Travel + accommodation",    qty: "1", amount: "AED 1,500")
+            // Single line item — the booking fee. Itemised line-item
+            // breakdowns aren't on the payments table yet; keep this
+            // honest until the schema grows them.
+            Line(
+                label: "\(invoice.artistName) — performance",
+                qty: "1",
+                amount: MoneyFormatter.compact(invoice.amount, currency: invoice.currency)
+            )
         }
     }
 
     // MARK: — Totals
 
-    private var totals: some View {
-        VStack(spacing: R.S.xs) {
-            totalRow(label: "Subtotal", value: "AED 28,000")
-            totalRow(label: "VAT (5%)", value: "AED 1,400")
+    private func totals(_ invoice: Invoice) -> some View {
+        let total = invoice.amount
+        return VStack(spacing: R.S.xs) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Total")
                     .monoLabel(size: 11, tracking: 0.8, color: R.C.fg1)
                 Spacer()
-                Text("AED 29,400")
+                Text(MoneyFormatter.compact(total, currency: invoice.currency))
                     .font(R.F.display(22, weight: .bold))
                     .tracking(-0.4)
                     .foregroundStyle(R.C.fg1)
             }
             .padding(.top, R.S.xs)
-        }
-    }
-
-    private func totalRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .monoLabel(size: 9, tracking: 0.6, color: R.C.fg3)
-            Spacer()
-            Text(value)
-                .font(R.F.mono(12, weight: .semibold))
-                .tracking(0.3)
-                .foregroundStyle(R.C.fg2)
         }
     }
 
@@ -196,6 +262,37 @@ public struct InvoiceView: View {
             .rotationEffect(.degrees(-18))
             .padding(R.S.xxl)
             .opacity(0.75)
+    }
+
+    // MARK: — Skeleton
+
+    private var invoiceSkeleton: some View {
+        VStack(alignment: .leading, spacing: R.S.lg) {
+            HStack {
+                RoundedRectangle(cornerRadius: 6).fill(R.C.glassLo).frame(width: 100, height: 22)
+                Spacer()
+                RoundedRectangle(cornerRadius: 6).fill(R.C.glassLo).frame(width: 80, height: 22)
+            }
+            Divider().overlay(R.C.borderSoft)
+            HStack(spacing: R.S.lg) {
+                RoundedRectangle(cornerRadius: 6).fill(R.C.glassLo).frame(height: 64)
+                RoundedRectangle(cornerRadius: 6).fill(R.C.glassLo).frame(height: 64)
+            }
+            Divider().overlay(R.C.borderSoft)
+            RoundedRectangle(cornerRadius: 6).fill(R.C.glassLo).frame(height: 32)
+        }
+        .padding(R.S.lg)
+        .glassSurface(cornerRadius: R.Rad.card3)
+        .redacted(reason: .placeholder)
+    }
+
+    // MARK: — Helpers
+
+    private func formatDate(_ date: Date?) -> String {
+        guard let date else { return "—" }
+        let f = DateFormatter()
+        f.dateFormat = "d MMM yyyy"
+        return f.string(from: date)
     }
 }
 
@@ -221,7 +318,7 @@ private struct Line: View {
                 .font(R.F.mono(11.5, weight: .semibold))
                 .tracking(0.3)
                 .foregroundStyle(R.C.fg1)
-                .frame(width: 90, alignment: .trailing)
+                .frame(width: 110, alignment: .trailing)
         }
         .padding(.vertical, 4)
     }
@@ -230,7 +327,10 @@ private struct Line: View {
 #if DEBUG
 #Preview("InvoiceView") {
     let nav = NavigationModel()
-    return InvoiceView(nav: nav, bookingID: "demo")
+    return InvoiceView(nav: nav, bookingID: "00000000-0000-0000-0000-000000000000")
+        .environment(InvoiceStore())
+        .environment(AuthStore())
+        .environment(ProfileStore())
         .preferredColorScheme(.dark)
 }
 #endif

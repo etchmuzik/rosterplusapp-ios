@@ -31,6 +31,7 @@ public struct AppRoot: View {
     @State private var push = PushStore()
     @State private var contracts = ContractsStore()
     @State private var invitations = InvitationsStore()
+    @State private var invoices = InvoiceStore()
     @State private var network = NetworkMonitor()
     // AnalyticsStore derives from BookingsStore; constructed lazily so
     // it captures the same instance we inject below.
@@ -114,6 +115,7 @@ public struct AppRoot: View {
         .environment(push)
         .environment(contracts)
         .environment(invitations)
+        .environment(invoices)
         .environment(network)
         .environment(analytics ?? AnalyticsStore(bookings: bookings))
         .background(R.C.bg0.ignoresSafeArea())
@@ -182,6 +184,7 @@ public struct AppRoot: View {
                 artistDetail.reset()
                 contracts.reset()
                 invitations.reset()
+                invoices.reset()
                 roster.reset()
                 availabilityCheck.reset()
                 analytics?.reset()
