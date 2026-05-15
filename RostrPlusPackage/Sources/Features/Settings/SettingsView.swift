@@ -31,6 +31,10 @@ public struct SettingsView: View {
     @State private var hapticsEnabled = true
     @State private var hideFromSearch = false
 
+    @Environment(\.openURL) private var openURL
+    @State private var passwordResetToast: String?
+    @State private var isSendingReset = false
+
     /// Bridges the bell toggle to PushStore.authorization. Reading
     /// returns the cached iOS permission state; setting triggers the
     /// OS prompt (first flip) or a no-op if already granted/denied.
@@ -89,6 +93,15 @@ public struct SettingsView: View {
                 header
                 profileCard
                 accountSection
+                if let toast = passwordResetToast {
+                    Text(toast)
+                        .font(R.F.body(12, weight: .regular))
+                        .foregroundStyle(R.C.green)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(R.S.md)
+                        .glassSurface(cornerRadius: R.Rad.card)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 preferencesSection
                 privacySection
                 supportSection
@@ -155,11 +168,32 @@ public struct SettingsView: View {
                 nav.push(.claim)
             }
             SettingsRow(icon: "envelope", label: "Change email", value: displayEmail, trailing: .chevron) {
-                // Placeholder
+                // Self-service email change isn't in-app yet — route via
+                // the support inbox so the user has an actual path
+                // forward instead of a dead row.
+                if let url = URL(string: "mailto:hi@rosterplus.io?subject=Change%20email%20on%20my%20ROSTR%2B%20account&body=Current%20email%3A%20\(displayEmail)%0A%0ANew%20email%3A%20") {
+                    openURL(url)
+                }
             }
             SettingsRow(icon: "lock", label: "Password", trailing: .chevron) {
-                // Placeholder
+                Task { await sendPasswordReset() }
             }
+        }
+    }
+
+    /// Sends a password-reset email to the signed-in user via the
+    /// existing AuthStore flow. Shows a transient toast on success.
+    private func sendPasswordReset() async {
+        guard !isSendingReset, displayEmail.contains("@") else { return }
+        isSendingReset = true
+        defer { isSendingReset = false }
+        let ok = await auth.forgotPassword(email: displayEmail)
+        passwordResetToast = ok
+            ? "Password-reset email sent to \(displayEmail)."
+            : "Couldn’t send reset email — try again later."
+        Task {
+            try? await Task.sleep(for: .seconds(4))
+            passwordResetToast = nil
         }
     }
 
@@ -179,7 +213,11 @@ public struct SettingsView: View {
         SettingsSection(title: "Privacy") {
             ToggleRow(icon: "eye.slash", label: "Hide from search", isOn: $hideFromSearch)
             SettingsRow(icon: "hand.raised", label: "Blocked accounts", value: "0", trailing: .chevron) {
-                // Placeholder
+                // Block-list management isn't in-app yet — route via
+                // the support inbox until the screen ships.
+                if let url = URL(string: "mailto:hi@rosterplus.io?subject=Manage%20blocked%20accounts") {
+                    openURL(url)
+                }
             }
         }
     }
@@ -188,10 +226,20 @@ public struct SettingsView: View {
 
     private var supportSection: some View {
         SettingsSection(title: "Support") {
-            SettingsRow(icon: "questionmark.circle", label: "Help centre", trailing: .chevron) {}
-            SettingsRow(icon: "bubble.left", label: "Contact support", trailing: .chevron) {}
-            SettingsRow(icon: "doc.text", label: "Terms of service", trailing: .chevron) {}
-            SettingsRow(icon: "hand.thumbsup", label: "Privacy policy", trailing: .chevron) {}
+            SettingsRow(icon: "questionmark.circle", label: "Help centre", trailing: .chevron) {
+                if let url = URL(string: "https://rosterplus.io/help") { openURL(url) }
+            }
+            SettingsRow(icon: "bubble.left", label: "Contact support", trailing: .chevron) {
+                if let url = URL(string: "mailto:hi@rosterplus.io?subject=ROSTR%2B%20support%20request") {
+                    openURL(url)
+                }
+            }
+            SettingsRow(icon: "doc.text", label: "Terms of service", trailing: .chevron) {
+                if let url = URL(string: "https://rosterplus.io/terms") { openURL(url) }
+            }
+            SettingsRow(icon: "hand.thumbsup", label: "Privacy policy", trailing: .chevron) {
+                if let url = URL(string: "https://rosterplus.io/privacy") { openURL(url) }
+            }
         }
     }
 
