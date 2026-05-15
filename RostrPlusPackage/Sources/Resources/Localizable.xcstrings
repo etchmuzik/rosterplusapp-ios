@@ -1031,6 +1031,24 @@
         }
       }
     },
+    "state.error.inbox": {
+      "comment": "Inbox error state — heading when the threads fetch fails.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load your inbox"
+          }
+        },
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعذّر تحميل صندوق الرسائل"
+          }
+        }
+      }
+    },
     "state.error.notifications": {
       "comment": "Notifications error state — heading when the initial fetch fails.",
       "extractionState": "manual",

@@ -17,6 +17,30 @@ import Foundation
 import Observation
 import Supabase
 
+/// Narrow seam for the writes ContractsStore performs against
+/// public.contracts. Production wires a Supabase-backed impl that
+/// PATCHes the row; tests inject a mock so optimistic-update +
+/// rollback branches can be observed without a live session.
+public protocol ContractWriter: Sendable {
+    func patchContract<Patch: Encodable & Sendable>(
+        _ patch: Patch, contractID: UUID
+    ) async throws
+}
+
+public struct SupabaseContractWriter: ContractWriter {
+    public init() {}
+
+    public func patchContract<Patch: Encodable & Sendable>(
+        _ patch: Patch, contractID: UUID
+    ) async throws {
+        _ = try await RostrSupabase.shared
+            .from("contracts")
+            .update(patch)
+            .eq("id", value: contractID)
+            .execute()
+    }
+}
+
 /// Display-friendly snapshot of a contract.
 public struct ContractRow: Identifiable, Hashable, Sendable {
     public let id: UUID
@@ -65,9 +89,12 @@ public final class ContractsStore {
     public private(set) var cache: [UUID: ContractRow] = [:]
 
     private let client = RostrSupabase.shared
+    private let writer: any ContractWriter
     private var inFlight: Set<UUID> = []
 
-    public init() {}
+    public init(writer: any ContractWriter = SupabaseContractWriter()) {
+        self.writer = writer
+    }
 
     /// Drop cached contracts. Called on sign-out so the next signed-in
     /// user doesn't see the previous user's contracts.
@@ -120,38 +147,39 @@ public final class ContractsStore {
     /// Sign the contract on behalf of the current user. Mirrors the
     /// web `DB.signContract`: PATCHes the role-specific flag plus a
     /// timestamp; if the *other* side is already signed, also flips
-    /// status to 'signed' and stamps signed_at.
+    /// status to 'signed' and stamps signed_at. Optimistic — rolls
+    /// back to the prior row on failure.
     public func sign(contractID: UUID, as signer: Signer) async {
         lastError = nil
-        guard var existing = cache[contractID] else {
+        guard let snapshot = cache[contractID] else {
             lastError = "Contract isn't loaded yet."
             return
         }
 
         // Optimistic: mark this side signed locally + recompute status.
         let now = Date()
-        let nextPromoterSigned = signer == .promoter ? true : existing.promoterSigned
-        let nextArtistSigned   = signer == .artist   ? true : existing.artistSigned
+        let nextPromoterSigned = signer == .promoter ? true : snapshot.promoterSigned
+        let nextArtistSigned   = signer == .artist   ? true : snapshot.artistSigned
         let bothNow = nextPromoterSigned && nextArtistSigned
-        existing = ContractRow(
-            id: existing.id,
-            bookingID: existing.bookingID,
-            title: existing.title,
-            content: existing.content,
-            status: bothNow ? .signed : existing.status,
+        let optimistic = ContractRow(
+            id: snapshot.id,
+            bookingID: snapshot.bookingID,
+            title: snapshot.title,
+            content: snapshot.content,
+            status: bothNow ? .signed : snapshot.status,
             promoterSigned: nextPromoterSigned,
             artistSigned: nextArtistSigned,
-            promoterSignedAt: signer == .promoter ? now : existing.promoterSignedAt,
-            artistSignedAt:   signer == .artist   ? now : existing.artistSignedAt,
-            signedAt: bothNow ? now : existing.signedAt,
-            createdAt: existing.createdAt
+            promoterSignedAt: signer == .promoter ? now : snapshot.promoterSignedAt,
+            artistSignedAt:   signer == .artist   ? now : snapshot.artistSignedAt,
+            signedAt: bothNow ? now : snapshot.signedAt,
+            createdAt: snapshot.createdAt
         )
-        cache[contractID] = existing
-        state = .loaded(existing)
+        cache[contractID] = optimistic
+        state = .loaded(optimistic)
 
         // Persist. We send only the fields we own — the trigger /
         // server-side timestamp can fill in the rest if it wants.
-        struct Patch: Encodable {
+        struct Patch: Encodable, Sendable {
             let promoter_signed: Bool?
             let artist_signed: Bool?
             let promoter_signed_at: String?
@@ -170,51 +198,49 @@ public final class ContractsStore {
         )
 
         do {
-            _ = try await client
-                .from("contracts")
-                .update(patch)
-                .eq("id", value: contractID)
-                .execute()
+            try await writer.patchContract(patch, contractID: contractID)
         } catch {
             lastError = error.localizedDescription
+            // Rollback to the pre-sign snapshot so the UI doesn't keep
+            // showing a signature that didn't land.
+            cache[contractID] = snapshot
+            state = .loaded(snapshot)
         }
     }
 
     /// Promoter dispatches a draft contract. Optimistic flip of
-    /// status from 'draft' to 'sent'.
+    /// status from 'draft' to 'sent'; rolls back on failure.
     public func send(contractID: UUID) async {
         lastError = nil
-        guard var existing = cache[contractID] else {
+        guard let snapshot = cache[contractID] else {
             lastError = "Contract isn't loaded yet."
             return
         }
-        guard existing.status == .draft else { return }
+        guard snapshot.status == .draft else { return }
 
-        existing = ContractRow(
-            id: existing.id,
-            bookingID: existing.bookingID,
-            title: existing.title,
-            content: existing.content,
+        let optimistic = ContractRow(
+            id: snapshot.id,
+            bookingID: snapshot.bookingID,
+            title: snapshot.title,
+            content: snapshot.content,
             status: .sent,
-            promoterSigned: existing.promoterSigned,
-            artistSigned: existing.artistSigned,
-            promoterSignedAt: existing.promoterSignedAt,
-            artistSignedAt: existing.artistSignedAt,
-            signedAt: existing.signedAt,
-            createdAt: existing.createdAt
+            promoterSigned: snapshot.promoterSigned,
+            artistSigned: snapshot.artistSigned,
+            promoterSignedAt: snapshot.promoterSignedAt,
+            artistSignedAt: snapshot.artistSignedAt,
+            signedAt: snapshot.signedAt,
+            createdAt: snapshot.createdAt
         )
-        cache[contractID] = existing
-        state = .loaded(existing)
+        cache[contractID] = optimistic
+        state = .loaded(optimistic)
 
-        struct Patch: Encodable { let status: String }
+        struct Patch: Encodable, Sendable { let status: String }
         do {
-            _ = try await client
-                .from("contracts")
-                .update(Patch(status: "sent"))
-                .eq("id", value: contractID)
-                .execute()
+            try await writer.patchContract(Patch(status: "sent"), contractID: contractID)
         } catch {
             lastError = error.localizedDescription
+            cache[contractID] = snapshot
+            state = .loaded(snapshot)
         }
     }
 

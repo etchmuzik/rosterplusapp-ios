@@ -58,6 +58,11 @@ public final class BookingsStore {
     /// instead of a forever-skeleton when a deep-link landing fails.
     public private(set) var detailErrors: [UUID: String] = [:]
 
+    /// Last error from a write path (currently `respond(to:with:)`).
+    /// Cleared on the next successful write or reset(). Surfaced as a
+    /// transient toast by BookingsView.
+    public private(set) var lastError: String?
+
     private let client = RostrSupabase.shared
     private var inFlight: Task<Void, Never>?
     private var detailInFlight: Set<UUID> = []
@@ -73,6 +78,7 @@ public final class BookingsStore {
         detailInFlight.removeAll()
         detailCache.removeAll()
         detailErrors.removeAll()
+        lastError = nil
         state = .idle
     }
 
@@ -189,8 +195,18 @@ public final class BookingsStore {
     /// Patch a single booking's status. The row moves out of
     /// `pendingRequests` immediately; the server roundtrip fires in
     /// the background. RLS enforces that only the booking's artist or
-    /// promoter can write this column.
+    /// promoter can write this column. On failure the optimistic row
+    /// is restored so the UI doesn't keep showing an accept/decline
+    /// that didn't land.
     public func respond(to bookingID: UUID, with response: RequestResponse) {
+        // Snapshot the row before flipping so we can undo on failure.
+        let snapshotRow: BookingRow? = {
+            if case .loaded(let up, let past) = state {
+                if let r = up.first(where: { $0.id == bookingID }) { return r }
+                if let r = past.first(where: { $0.id == bookingID }) { return r }
+            }
+            return detailCache[bookingID]
+        }()
         // Optimistic local update — find the row in either bucket and
         // replace it with a new copy carrying the new status.
         if case .loaded(var up, let past) = state,
@@ -214,12 +230,27 @@ public final class BookingsStore {
                     .update(Patch(status: response.targetStatus))
                     .eq("id", value: bookingID)
                     .execute()
+                self.lastError = nil
             } catch {
-                // Optimistic row stays; next refresh reconciles with
-                // server truth. A real app would surface a toast here.
                 #if DEBUG
                 log.error("respond failed: \(error.localizedDescription, privacy: .public)")
                 #endif
+                self.lastError = error.localizedDescription
+                // Restore the snapshot row in both state buckets and
+                // the detail cache so the UI flips back to its prior
+                // state instead of keeping the failed write.
+                if let snapshotRow {
+                    self.detailCache[bookingID] = snapshotRow
+                    if case .loaded(var up, var past) = self.state {
+                        if let idx = up.firstIndex(where: { $0.id == bookingID }) {
+                            up[idx] = snapshotRow
+                            self.state = .loaded(upcoming: up, past: past)
+                        } else if let idx = past.firstIndex(where: { $0.id == bookingID }) {
+                            past[idx] = snapshotRow
+                            self.state = .loaded(upcoming: up, past: past)
+                        }
+                    }
+                }
             }
         }
     }

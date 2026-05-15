@@ -44,7 +44,7 @@ struct ContractsStoreTests {
 
     @Test("Promoter signing flips promoterSigned + stamps timestamp")
     func promoterSign() async {
-        let store = ContractsStore()
+        let store = ContractsStore(writer: NoopContractWriter())
         let r = row()
         store._testLoad(r)
         await store.sign(contractID: r.id, as: .promoter)
@@ -57,7 +57,7 @@ struct ContractsStoreTests {
 
     @Test("Artist signing flips artistSigned + stamps timestamp")
     func artistSign() async {
-        let store = ContractsStore()
+        let store = ContractsStore(writer: NoopContractWriter())
         let r = row()
         store._testLoad(r)
         await store.sign(contractID: r.id, as: .artist)
@@ -69,7 +69,7 @@ struct ContractsStoreTests {
 
     @Test("Counterparty signing flips status to .signed + stamps signed_at")
     func bothSignedTransition() async {
-        let store = ContractsStore()
+        let store = ContractsStore(writer: NoopContractWriter())
         let r = row(promoterSigned: true)  // promoter already signed
         store._testLoad(r)
         await store.sign(contractID: r.id, as: .artist)
@@ -82,7 +82,7 @@ struct ContractsStoreTests {
 
     @Test("Promoter sending a draft contract flips status to sent")
     func sendDraft() async {
-        let store = ContractsStore()
+        let store = ContractsStore(writer: NoopContractWriter())
         let r = row(status: .draft)
         store._testLoad(r)
         await store.send(contractID: r.id)
@@ -92,7 +92,7 @@ struct ContractsStoreTests {
 
     @Test("Sending a non-draft contract is a no-op")
     func sendNonDraftNoop() async {
-        let store = ContractsStore()
+        let store = ContractsStore(writer: NoopContractWriter())
         let r = row(status: .signed)
         store._testLoad(r)
         await store.send(contractID: r.id)
@@ -104,6 +104,30 @@ struct ContractsStoreTests {
     func signMissingContract() async {
         let store = ContractsStore()
         await store.sign(contractID: UUID(), as: .promoter)
+        #expect(store.lastError != nil)
+    }
+
+    @Test("Signing rolls back to the prior row on writer failure")
+    func signRollback() async {
+        let store = ContractsStore(writer: FailingContractWriter())
+        let r = row()
+        store._testLoad(r)
+        await store.sign(contractID: r.id, as: .promoter)
+        // Optimistic flip happened, writer threw, cache restored.
+        let cached = store.cache[r.id]
+        #expect(cached?.promoterSigned == false)
+        #expect(cached?.promoterSignedAt == nil)
+        #expect(store.lastError != nil)
+    }
+
+    @Test("Sending rolls back to draft on writer failure")
+    func sendRollback() async {
+        let store = ContractsStore(writer: FailingContractWriter())
+        let r = row(status: .draft)
+        store._testLoad(r)
+        await store.send(contractID: r.id)
+        let cached = store.cache[r.id]
+        #expect(cached?.status == .draft)
         #expect(store.lastError != nil)
     }
 }

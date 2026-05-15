@@ -30,9 +30,13 @@ public struct InboxView: View {
                         .padding(.top, R.S.lg)
 
                 case .failed(let message):
-                    failureCard(message)
-                        .padding(.horizontal, R.S.lg)
-                        .padding(.top, R.S.lg)
+                    FailureCard(heading: S.State.errorInbox, message: message) {
+                        if let userID = auth.currentUserID {
+                            store.refresh(for: userID)
+                        }
+                    }
+                    .padding(.horizontal, R.S.lg)
+                    .padding(.top, R.S.lg)
 
                 case .loaded:
                     if store.threads.isEmpty {
@@ -99,26 +103,6 @@ public struct InboxView: View {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    private func failureCard(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: R.S.sm) {
-            Text(S.Inbox.errorTitle)
-                .font(R.F.body(13, weight: .semibold))
-                .foregroundStyle(R.C.fg1)
-            Text(message)
-                .font(R.F.body(12, weight: .regular))
-                .foregroundStyle(R.C.fg2)
-        }
-        .padding(R.S.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
-                .fill(R.C.red.opacity(0.08))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
-                .strokeBorder(R.C.red.opacity(0.25), lineWidth: R.S.hairline)
-        }
-    }
 }
 
 // MARK: - Row

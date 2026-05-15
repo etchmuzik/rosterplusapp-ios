@@ -89,7 +89,11 @@ public struct PaymentsView: View {
         case .idle, .loading:
             loadingSkeleton
         case .failed(let message):
-            failureCard(message)
+            FailureCard(heading: S.State.errorPayments, message: message) {
+                if let userID = auth.currentUserID {
+                    store.refresh(for: userID)
+                }
+            }
         case .loaded:
             if filtered.isEmpty {
                 emptyState
@@ -150,23 +154,6 @@ public struct PaymentsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, R.S.xxl)
-    }
-
-    private func failureCard(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: R.S.sm) {
-            Text(S.State.errorPayments)
-                .font(R.F.body(13, weight: .semibold))
-                .foregroundStyle(R.C.fg1)
-            Text(message)
-                .font(R.F.body(12, weight: .regular))
-                .foregroundStyle(R.C.fg2)
-        }
-        .padding(R.S.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
-                .fill(R.C.red.opacity(0.08))
-        }
     }
 
     // MARK: — Helpers

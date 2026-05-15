@@ -47,10 +47,18 @@ public struct NotificationsView: View {
                     case .idle, .loading:
                         loadingSkeleton
                     case .failed(let message):
-                        failureCard(message)
+                        FailureCard(heading: S.State.errorNotifications, message: message) {
+                            if let userID = auth.currentUserID {
+                                store.refresh(for: userID)
+                            }
+                        }
                     case .loaded:
-                        unreadSection
-                        earlierSection
+                        if store.unread.isEmpty && store.read.isEmpty {
+                            emptyState
+                        } else {
+                            unreadSection
+                            earlierSection
+                        }
                     }
                     Color.clear.frame(height: R.S.xxl)
                 }
@@ -109,21 +117,23 @@ public struct NotificationsView: View {
         .redacted(reason: .placeholder)
     }
 
-    private func failureCard(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: R.S.sm) {
-            Text(S.State.errorNotifications)
-                .font(R.F.body(13, weight: .semibold))
+    /// Shown when the .loaded state has zero rows in either bucket —
+    /// previously this rendered nothing under the header (W2 audit).
+    private var emptyState: some View {
+        VStack(spacing: R.S.sm) {
+            Image(systemName: "bell.slash")
+                .font(.system(size: 28, weight: .light))
+                .foregroundStyle(R.C.fg3)
+            Text("You're all caught up")
+                .font(R.F.body(14, weight: .semibold))
                 .foregroundStyle(R.C.fg1)
-            Text(message)
+            Text("New bookings, contracts, and payments will show up here.")
                 .font(R.F.body(12, weight: .regular))
-                .foregroundStyle(R.C.fg2)
+                .foregroundStyle(R.C.fg3)
+                .multilineTextAlignment(.center)
         }
-        .padding(R.S.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            RoundedRectangle(cornerRadius: R.Rad.button2, style: .continuous)
-                .fill(R.C.red.opacity(0.08))
-        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, R.S.xxl)
     }
 
     // MARK: — Routing
