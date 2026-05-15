@@ -40,8 +40,21 @@ public final class AuthStore {
         }
     }
 
-    public private(set) var state: State = .unknown
+    public private(set) var state: State = .unknown {
+        didSet {
+            // Tie email-confirmation flag to session validity so any
+            // path that flips state to .signedOut clears it without a
+            // manual reset call.
+            if case .signedIn = state { return }
+            isEmailConfirmed = false
+        }
+    }
     public private(set) var lastError: String?
+
+    /// Whether the signed-in user has confirmed their email address.
+    /// Mirrors `auth.users.email_confirmed_at != nil`. Reset to false
+    /// on sign-out.
+    public private(set) var isEmailConfirmed: Bool = false
 
     private let client = RostrSupabase.shared
 
@@ -238,6 +251,7 @@ public final class AuthStore {
     private func apply(session: Session) async {
         let user = session.user
         let role = await fetchRole(userID: user.id) ?? "promoter"
+        isEmailConfirmed = user.emailConfirmedAt != nil
         state = .signedIn(
             userID: user.id,
             email: user.email ?? "",

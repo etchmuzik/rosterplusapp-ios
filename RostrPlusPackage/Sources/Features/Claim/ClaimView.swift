@@ -1,16 +1,15 @@
 // ClaimView.swift — Screen 19
 //
-// Artist claim-profile verification checklist. Port of `ClaimScreen`
-// at ios-app.jsx line 1693.
+// Artist claim-profile verification checklist.
 //
 // Three steps to unlock full booking privileges:
-//   1. Verify email
+//   1. Verify email   — derived from auth.users.email_confirmed_at
 //   2. Link a social profile (IG / SoundCloud / Spotify)
 //   3. Add a payout method
 //
-// Each step is a card with a rounded-square glyph, status pill, and
-// either a "Verify" button or a completed check. The progress bar at
-// the top shows "N of 3 complete".
+// Steps 2 + 3 don't have in-app flows yet; tapping their CTAs opens
+// the support inbox so the user has an actual path forward rather
+// than a fake-progress local-state toggle.
 
 import SwiftUI
 import DesignSystem
@@ -20,15 +19,31 @@ import UIKit
 
 public struct ClaimView: View {
     @Bindable var nav: NavigationModel
+    @Environment(AuthStore.self) private var auth
+    @Environment(ProfileStore.self) private var profile
+    @Environment(\.openURL) private var openURL
 
-    // Local state for Wave 4; wires to Supabase + edge fns in prod.
-    @State private var emailVerified = true
-    @State private var socialLinked = false
-    @State private var payoutAdded = false
+    @State private var resendingEmail = false
+    @State private var emailToast: String?
 
     public init(nav: NavigationModel) {
         self.nav = nav
     }
+
+    /// The user's real email — surfaced in the Step-1 copy so we
+    /// don't leak the operator's address to every artist.
+    private var userEmail: String {
+        if let email = profile.current?.email, !email.isEmpty { return email }
+        if case .signedIn(_, let email, _) = auth.state, !email.isEmpty { return email }
+        return "your account email"
+    }
+
+    private var emailVerified: Bool { auth.isEmailConfirmed }
+    /// Social + payout aren't backed by real flows yet. Treating
+    /// them as in-progress (always "request via support") is the
+    /// honest state — better than fake-completed local toggles.
+    private var socialLinked: Bool { false }
+    private var payoutAdded: Bool { false }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +52,15 @@ public struct ClaimView: View {
                 VStack(alignment: .leading, spacing: R.S.lg) {
                     hero
                     progressCard
+                    if let toast = emailToast {
+                        Text(toast)
+                            .font(R.F.body(12, weight: .regular))
+                            .foregroundStyle(R.C.green)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(R.S.md)
+                            .glassSurface(cornerRadius: R.Rad.card)
+                            .transition(.opacity)
+                    }
                     stepsStack
                     helpCard
                     Color.clear.frame(height: R.S.xxl)
@@ -46,6 +70,31 @@ public struct ClaimView: View {
             }
         }
         .background(R.C.bg0)
+    }
+
+    private func resendVerificationEmail() async {
+        guard !resendingEmail, userEmail.contains("@") else { return }
+        resendingEmail = true
+        defer { resendingEmail = false }
+        // Reuse the password-reset edge function as a session-recovery
+        // signal; Supabase auth confirmation emails are sent
+        // automatically on signup. Surface a clear path until a
+        // dedicated "resend verification" edge function lands.
+        let ok = await auth.forgotPassword(email: userEmail)
+        emailToast = ok
+            ? "We sent a sign-in link to \(userEmail) — open it on this device."
+            : "Couldn’t send right now. Message support."
+        Task {
+            try? await Task.sleep(for: .seconds(5))
+            emailToast = nil
+        }
+    }
+
+    private func openSupport(subject: String) {
+        let encoded = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject
+        if let url = URL(string: "mailto:hi@rosterplus.io?subject=\(encoded)") {
+            openURL(url)
+        }
     }
 
     // MARK: — Hero
@@ -106,39 +155,41 @@ public struct ClaimView: View {
                 index: 1,
                 glyph: "envelope",
                 title: "Verify email",
-                copy: "We'll send a 6-digit code to hesham@beyondmngmt.ae.",
+                copy: emailVerified
+                    ? "Email verified — \(userEmail) is confirmed."
+                    : "We sent a verification email to \(userEmail). Tap the link inside. Resend if it didn't arrive.",
                 isDone: emailVerified,
-                ctaLabel: "Verified",
+                ctaLabel: resendingEmail ? "Sending…" : "Resend",
                 action: {
-                    withAnimation(R.M.easeOut) { emailVerified = true }
+                    Task { await resendVerificationEmail() }
                 }
             )
             StepCard(
                 index: 2,
                 glyph: "link",
                 title: "Link a social profile",
-                copy: "Pick one: Instagram, SoundCloud, or Spotify. Promoters see these on your EPK.",
+                copy: "Pick one: Instagram, SoundCloud, or Spotify. Message support — we'll set this up while in-app linking ships.",
                 isDone: socialLinked,
-                ctaLabel: "Link",
+                ctaLabel: "Request",
                 action: {
                     #if canImport(UIKit)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     #endif
-                    withAnimation(R.M.easeOut) { socialLinked = true }
+                    openSupport(subject: "Link a social profile to my ROSTR+ artist account")
                 }
             )
             StepCard(
                 index: 3,
                 glyph: "creditcard",
                 title: "Add a payout method",
-                copy: "IBAN or card. Payments land directly after each event.",
+                copy: "IBAN or card. Payments land directly after each event. Message support to add yours while the in-app form ships.",
                 isDone: payoutAdded,
-                ctaLabel: "Add",
+                ctaLabel: "Request",
                 action: {
                     #if canImport(UIKit)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     #endif
-                    withAnimation(R.M.easeOut) { payoutAdded = true }
+                    openSupport(subject: "Add a payout method to my ROSTR+ artist account")
                 }
             )
         }
@@ -232,6 +283,8 @@ private struct StepCard: View {
 #Preview("ClaimView") {
     let nav = NavigationModel()
     return ClaimView(nav: nav)
+        .environment(AuthStore())
+        .environment(ProfileStore())
         .preferredColorScheme(.dark)
 }
 #endif
