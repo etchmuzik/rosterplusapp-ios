@@ -45,6 +45,12 @@ public final class InvitationsStore {
     private let client = RostrSupabase.shared
     private let webOrigin = "https://rosterplus.io"
 
+    /// Bumped on every reset() so an in-flight send() can detect the
+    /// sign-out and bail before appending to recent[]. Avoids the
+    /// audit-flagged race where the previous user's pending invite
+    /// could land into the next user's list.
+    private var sessionEpoch: UInt = 0
+
     public init() {}
 
     /// Drop cached invitations and any pending result. Called on
@@ -52,6 +58,7 @@ public final class InvitationsStore {
     public func reset() {
         sendResult = .idle
         recent = []
+        sessionEpoch &+= 1
     }
 
     // MARK: — Send
@@ -80,6 +87,7 @@ public final class InvitationsStore {
         }
 
         sendResult = .sending
+        let epoch = sessionEpoch
 
         struct Insert: Encodable {
             let invited_by: UUID
@@ -147,6 +155,10 @@ public final class InvitationsStore {
                 #endif
             }
 
+            // Bail if reset() flipped the epoch while we were awaiting
+            // the network — the previous user signed out, and their
+            // pending invite must not land into the next user's list.
+            guard sessionEpoch == epoch else { return }
             sendResult = .sent(email: trimmedEmail)
             // Prepend to the recent list for UX.
             let display = InvitationRow(
@@ -159,6 +171,7 @@ public final class InvitationsStore {
             )
             recent.insert(display, at: 0)
         } catch {
+            guard sessionEpoch == epoch else { return }
             sendResult = .failed(error.localizedDescription)
         }
     }
