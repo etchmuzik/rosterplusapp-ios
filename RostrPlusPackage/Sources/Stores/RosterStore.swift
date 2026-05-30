@@ -59,6 +59,11 @@ public final class RosterStore {
     // MARK: — Fetch
 
     public func refresh() {
+        #if DEBUG
+        // Screenshot mode seeds this store directly; never overwrite it
+        // with a network fetch.
+        if ScreenshotSeed.isActive { return }
+        #endif
         // No double-fetches — the store is single-consumer.
         if inFlight != nil { return }
 

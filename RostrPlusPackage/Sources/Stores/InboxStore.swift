@@ -96,6 +96,9 @@ public final class InboxStore {
     /// Fetch every message this user is a party to. Call once after
     /// sign-in, and again whenever the user pulls-to-refresh.
     public func refresh(for userID: UUID) {
+        #if DEBUG
+        if ScreenshotSeed.isActive { return }
+        #endif
         if inFlight != nil { return }
         currentUserID = userID
 

@@ -182,6 +182,11 @@ public final class ArtistDetailStore {
             state = .loaded(cached)
             return
         }
+        #if DEBUG
+        // Screenshot mode: only the seeded artist(s) are cached; never
+        // network-fetch an un-seeded id (it would fail with no session).
+        if ScreenshotSeed.isActive { return }
+        #endif
         if inFlight.contains(id) { return }
         inFlight.insert(id)
         state = .loading(id)

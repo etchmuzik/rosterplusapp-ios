@@ -316,4 +316,15 @@ public final class AuthStore {
         }
         return error.localizedDescription
     }
+
+    #if DEBUG
+    /// Force the store into `.signedIn` with a fake session — NO network.
+    /// Used by screenshot mode (see ScreenshotSeed) to bypass the auth
+    /// gate so curated demo data can render the authenticated surface.
+    /// DEBUG-only; cannot exist in the shipping binary.
+    public func _forceSignIn(userID: UUID, email: String, role: String) {
+        isEmailConfirmed = true
+        state = .signedIn(userID: userID, email: email, role: role)
+    }
+    #endif
 }

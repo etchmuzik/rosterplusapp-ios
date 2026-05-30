@@ -93,6 +93,9 @@ public final class BookingsStore {
     /// Fetch every booking the current user is a party to. Splits the
     /// response client-side into upcoming + past.
     public func refresh(for userID: UUID, role: Role) {
+        #if DEBUG
+        if ScreenshotSeed.isActive { return }
+        #endif
         if inFlight != nil { return }
 
         inFlight = Task { [weak self] in

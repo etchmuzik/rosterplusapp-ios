@@ -110,6 +110,17 @@ public final class ContractsStore {
     /// Pull the contract belonging to a booking. The view passes the
     /// booking id (from the route) and we resolve via booking_id.
     public func fetch(forBookingID bookingID: UUID) {
+        #if DEBUG
+        // Screenshot mode: serve the single seeded contract from cache
+        // instead of networking (which would 'No contract yet').
+        if ScreenshotSeed.isActive {
+            if let row = cache.values.first(where: { $0.bookingID == bookingID })
+                ?? cache.values.first {
+                state = .loaded(row)
+            }
+            return
+        }
+        #endif
         if inFlight.contains(bookingID) { return }
         inFlight.insert(bookingID)
 

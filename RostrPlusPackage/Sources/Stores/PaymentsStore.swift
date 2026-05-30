@@ -63,6 +63,9 @@ public final class PaymentsStore {
     /// The `userID` parameter is kept here for API symmetry and in case
     /// we later want to cross-check client-side (belt-and-braces).
     public func refresh(for userID: UUID) {
+        #if DEBUG
+        if ScreenshotSeed.isActive { return }
+        #endif
         if inFlight != nil { return }
         _ = userID
 

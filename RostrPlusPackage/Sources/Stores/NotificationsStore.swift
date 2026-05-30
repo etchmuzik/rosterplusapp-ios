@@ -73,6 +73,9 @@ public final class NotificationsStore {
     // MARK: — Fetch
 
     public func refresh(for userID: UUID) {
+        #if DEBUG
+        if ScreenshotSeed.isActive { return }
+        #endif
         if inFlight != nil { return }
 
         inFlight = Task { [weak self] in

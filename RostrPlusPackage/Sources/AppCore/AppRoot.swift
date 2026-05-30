@@ -121,6 +121,42 @@ public struct AppRoot: View {
         .background(R.C.bg0.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .task {
+            #if DEBUG
+            // Screenshot mode: force a fake signed-in session and seed
+            // every store with curated demo data — NO network, no live
+            // observation. Bails out before the real session path so the
+            // seeded state isn't clobbered by a Supabase round-trip.
+            if ScreenshotSeed.isActive {
+                auth._forceSignIn(
+                    userID: ScreenshotSeed.demoUserID,
+                    email: ScreenshotSeed.demoEmail,
+                    role: ScreenshotSeed.demoRole
+                )
+                if analytics == nil { analytics = AnalyticsStore(bookings: bookings) }
+                ScreenshotSeed.apply(
+                    roster: roster,
+                    bookings: bookings,
+                    payments: payments,
+                    notifications: notifications,
+                    inbox: inbox,
+                    contracts: contracts,
+                    artistDetail: artistDetail,
+                    profile: profile
+                )
+                // Optional deep-link to a specific screen for capture.
+                // Path format (Route.parse), e.g.
+                //   -RostrScreenshotRoute "artists/A0000001-…"
+                //   -RostrScreenshotRoute "contracts/C0000001-…"
+                //   -RostrScreenshotRoute "epks/A0000001-…"
+                let args = ProcessInfo.processInfo.arguments
+                if let i = args.firstIndex(of: "-RostrScreenshotRoute"),
+                   i + 1 < args.count,
+                   let route = Route.parse(href: args[i + 1]) {
+                    nav.push(route)
+                }
+                return
+            }
+            #endif
             await auth.loadSession()
             #if DEBUG
             // UI-test bridge: when launched with
