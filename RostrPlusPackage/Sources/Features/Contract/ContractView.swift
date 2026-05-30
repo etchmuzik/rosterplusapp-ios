@@ -374,12 +374,12 @@ public struct ContractView: View {
         if let err = store.lastError {
             errorMessage = err
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
             return
         }
         #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         #endif
     }
 
@@ -391,12 +391,12 @@ public struct ContractView: View {
         if let err = store.lastError {
             errorMessage = err
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
             return
         }
         #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         #endif
     }
 }

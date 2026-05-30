@@ -61,7 +61,7 @@ public struct InvoiceView: View {
             NavHeader(title: "Invoice", onBack: { nav.pop() }) {
                 Button {
                     #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    Haptics.tap()
                     #endif
                     showingShareSheet = true
                 } label: {

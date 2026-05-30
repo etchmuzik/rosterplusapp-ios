@@ -27,7 +27,7 @@ public struct NotificationsView: View {
             NavHeader(title: "Notifications", onBack: { nav.pop() }) {
                 Button {
                     #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    Haptics.tap()
                     #endif
                     for n in store.unread { store.markRead(n.id) }
                 } label: {

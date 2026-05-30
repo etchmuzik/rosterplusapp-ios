@@ -151,7 +151,7 @@ public struct ProfileEditView: View {
             }
             avatarURL = uploaded.publicURL
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
             #endif
         } catch let error as RostrStorageError {
             errorMessage = Self.humanise(error)
@@ -202,7 +202,7 @@ public struct ProfileEditView: View {
             }
             gallery = artistStore.cache[artistID]?.galleryURLs ?? gallery
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
             #endif
         } catch let error as RostrStorageError {
             errorMessage = Self.humanise(error)
@@ -271,7 +271,7 @@ public struct ProfileEditView: View {
             }
             riderURL = uploaded.publicURL
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
             #endif
         } catch let error as RostrStorageError {
             errorMessage = Self.humanise(error)
@@ -313,7 +313,7 @@ public struct ProfileEditView: View {
         if let err = profileStore.lastError {
             errorMessage = err
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
             return
         }
@@ -334,7 +334,7 @@ public struct ProfileEditView: View {
             if let err = artistStore.lastError {
                 errorMessage = err
                 #if canImport(UIKit)
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                Haptics.error()
                 #endif
                 return
             }
@@ -347,7 +347,7 @@ public struct ProfileEditView: View {
         await profileStore.markOnboardingComplete(userID: userID)
 
         #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         #endif
         nav.pop()
     }

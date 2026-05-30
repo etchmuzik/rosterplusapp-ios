@@ -321,7 +321,7 @@ public struct BookingView: View {
                 .execute()
 
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
             #endif
 
             // Refresh so the new row lands in our own BookingsStore
@@ -332,7 +332,7 @@ public struct BookingView: View {
         } catch {
             submitError = "Couldn't send — \(error.localizedDescription)"
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
         }
     }

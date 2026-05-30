@@ -27,9 +27,21 @@ public struct SettingsView: View {
     @Environment(ProfileStore.self) private var profileStore
     @Environment(PushStore.self) private var push
 
-    @State private var emailUpdates = true
-    @State private var hapticsEnabled = true
+    /// Local working copy of the five notification switches, seeded from
+    /// the loaded profile and written back to `profiles.notification_prefs`
+    /// on every flip. `nil` until the profile resolves — the toggles read
+    /// the opt-out-safe all-on default in the meantime so they never show
+    /// "off" for a channel that's actually on.
+    @State private var prefs: NotificationPrefs?
+
+    @AppStorage("hapticsEnabled") private var hapticsEnabled = true
     @State private var hideFromSearch = false
+
+    /// Transient message shown when a notification-pref write fails. The
+    /// optimistic toggle reverts on its own (via the .onChange re-seed
+    /// from the store rollback) — this explains why, so the snap-back
+    /// isn't silent motion. Mirrors the web's "Failed to save" toast.
+    @State private var prefsErrorToast: String?
 
     @Environment(\.openURL) private var openURL
     @State private var passwordResetToast: String?
@@ -59,6 +71,49 @@ public struct SettingsView: View {
 
     public init(nav: NavigationModel) {
         self.nav = nav
+    }
+
+    /// The prefs the toggles render against: the local working copy once
+    /// seeded, else the profile's resolved prefs, else all-on. Keeps the
+    /// switches honest before the local `@State` is populated.
+    private var effectivePrefs: NotificationPrefs {
+        prefs ?? profileStore.current?.prefs ?? .defaultAllOn
+    }
+
+    /// Builds a binding for one notification key. Reading reflects the
+    /// current working copy; writing mutates that copy and persists ALL
+    /// five keys to `profiles.notification_prefs` (never a partial
+    /// object — the hidden role-gated key rides along unchanged, matching
+    /// the web writer at settings.html:269).
+    private func prefBinding(_ keyPath: WritableKeyPath<NotificationPrefs, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { effectivePrefs[keyPath: keyPath] },
+            set: { newValue in
+                var next = effectivePrefs
+                next[keyPath: keyPath] = newValue
+                prefs = next
+                if case .signedIn(let userID, _, _) = auth.state {
+                    Task {
+                        await profileStore.updateNotificationPrefs(next, userID: userID)
+                        // The store rolls back its loaded state on failure
+                        // (which re-seeds the toggle via .onChange); surface
+                        // a transient note so the snap-back isn't silent.
+                        if profileStore.lastError != nil {
+                            showPrefsError()
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    /// Show the pref-write failure note for a few seconds, then clear it.
+    private func showPrefsError() {
+        withAnimation { prefsErrorToast = "Couldn’t save that preference — check your connection and try again." }
+        Task {
+            try? await Task.sleep(for: .seconds(4))
+            withAnimation { prefsErrorToast = nil }
+        }
     }
 
     /// Derived email for the profile card. Falls back to the placeholder
@@ -103,6 +158,15 @@ public struct SettingsView: View {
                         .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 preferencesSection
+                if let toast = prefsErrorToast {
+                    Text(toast)
+                        .font(R.F.body(12, weight: .regular))
+                        .foregroundStyle(R.C.fg2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(R.S.md)
+                        .glassSurface(cornerRadius: R.Rad.card)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 privacySection
                 supportSection
                 buildFooter
@@ -113,6 +177,14 @@ public struct SettingsView: View {
             .padding(.top, R.S.sm)
         }
         .background(R.C.bg0)
+        // Seed the local working copy from server truth on first render,
+        // and re-seed if the profile reloads underneath us (scenePhase
+        // resync). Keeps the toggles in sync with what the server holds.
+        .onChange(of: profileStore.current?.notificationPrefs, initial: true) { _, _ in
+            if let serverPrefs = profileStore.current?.notificationPrefs {
+                prefs = serverPrefs
+            }
+        }
     }
 
     // MARK: — Header
@@ -202,7 +274,18 @@ public struct SettingsView: View {
     private var preferencesSection: some View {
         SettingsSection(title: "Preferences") {
             ToggleRow(icon: "bell", label: "Push notifications", isOn: pushEnabledBinding)
-            ToggleRow(icon: "paperplane", label: "Email updates", isOn: $emailUpdates)
+            ToggleRow(icon: "paperplane", label: "Email updates", isOn: prefBinding(\.email))
+            ToggleRow(icon: "calendar", label: "Booking alerts", isOn: prefBinding(\.bookings))
+            ToggleRow(icon: "message", label: "Message alerts", isOn: prefBinding(\.messages))
+            // Role-gated, matching the web: promoters get contract
+            // notifications, artists get payout notifications. The hidden
+            // key still round-trips at its saved value on every write.
+            if nav.role == .promoter {
+                ToggleRow(icon: "doc.text", label: "Contract alerts", isOn: prefBinding(\.contracts))
+            }
+            if nav.role == .artist {
+                ToggleRow(icon: "creditcard", label: "Payout alerts", isOn: prefBinding(\.payouts))
+            }
             ToggleRow(icon: "waveform", label: "Haptics", isOn: $hapticsEnabled)
         }
     }
@@ -273,7 +356,7 @@ public struct SettingsView: View {
     private var signOutButton: some View {
         PrimaryButton("Sign out", variant: .destructive) {
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            Haptics.warning()
             #endif
             // Clear push token first so the device stops receiving
             // notifications for the signed-out user. AuthStore then

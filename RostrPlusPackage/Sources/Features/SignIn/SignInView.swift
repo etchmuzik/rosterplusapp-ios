@@ -159,7 +159,7 @@ public struct SignInView: View {
                             resetSentMessage = nil
                         }
                         #if canImport(UIKit)
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        Haptics.selection()
                         #endif
                     }
                 } label: {
@@ -358,7 +358,7 @@ public struct SignInView: View {
                         resetSentMessage = nil
                     }
                     #if canImport(UIKit)
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    Haptics.selection()
                     #endif
                 } label: {
                     Text(mode == .signIn ? "Create one" : "Sign in")
@@ -436,12 +436,12 @@ public struct SignInView: View {
 
         if auth.isSignedIn {
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
             #endif
             // AppRoot watches AuthStore.state and routes to tabs.
         } else {
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
         }
     }
@@ -461,11 +461,11 @@ public struct SignInView: View {
                 resetSentMessage = "Check \(email) for a reset link."
             }
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
             #endif
         } else {
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
         }
     }

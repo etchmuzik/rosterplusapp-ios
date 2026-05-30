@@ -107,7 +107,7 @@ public struct AvailabilityView: View {
         if let err = artistStore.lastError {
             errorMessage = err
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
             return
         }
@@ -115,7 +115,7 @@ public struct AvailabilityView: View {
         if let err = artistStore.lastError {
             errorMessage = err
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
             return
         }
@@ -123,13 +123,13 @@ public struct AvailabilityView: View {
         if let err = artistStore.lastError {
             errorMessage = err
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
             return
         }
 
         #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Haptics.success()
         #endif
         nav.pop()
     }
@@ -351,7 +351,7 @@ public struct AvailabilityView: View {
         let d = Calendar.current.startOfDay(for: date)
         guard d >= Calendar.current.startOfDay(for: Date()) else { return }
         #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Haptics.tap()
         #endif
         withAnimation(R.M.easeOutFast) {
             if blockedDates.contains(d) { blockedDates.remove(d) } else { blockedDates.insert(d) }

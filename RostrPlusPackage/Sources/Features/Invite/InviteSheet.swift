@@ -96,7 +96,7 @@ public struct InviteSheet: View {
                         if role != r {
                             role = r
                             #if canImport(UIKit)
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            Haptics.selection()
                             #endif
                         }
                     } label: {
@@ -258,14 +258,14 @@ public struct InviteSheet: View {
         )
         if case .sent = store.sendResult {
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
             #endif
             // Auto-dismiss after a beat so the user sees the success banner.
             try? await Task.sleep(for: .seconds(0.9))
             dismiss()
         } else {
             #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            Haptics.error()
             #endif
         }
     }

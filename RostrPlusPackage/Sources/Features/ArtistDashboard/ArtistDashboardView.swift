@@ -95,7 +95,7 @@ public struct ArtistDashboardView: View {
                 Button {
                     nav.setRole(r)
                     #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    Haptics.tap()
                     #endif
                 } label: {
                     Text(r == .promoter ? "Promoter" : "Artist")
@@ -246,13 +246,13 @@ public struct ArtistDashboardView: View {
                             onTap: { nav.push(.bookingDetail(bookingID: row.id.uuidString)) },
                             onAccept: {
                                 #if canImport(UIKit)
-                                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                Haptics.success()
                                 #endif
                                 bookings.respond(to: row.id, with: .accept)
                             },
                             onDecline: {
                                 #if canImport(UIKit)
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                Haptics.tap()
                                 #endif
                                 bookings.respond(to: row.id, with: .decline)
                             }

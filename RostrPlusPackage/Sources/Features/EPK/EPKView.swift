@@ -60,7 +60,7 @@ public struct EPKView: View {
             NavHeader(title: "EPK", onBack: { nav.pop() }) {
                 Button {
                     #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    Haptics.tap()
                     #endif
                     showingShareSheet = true
                 } label: {

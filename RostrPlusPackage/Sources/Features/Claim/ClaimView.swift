@@ -173,7 +173,7 @@ public struct ClaimView: View {
                 ctaLabel: "Request",
                 action: {
                     #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    Haptics.tap()
                     #endif
                     openSupport(subject: "Link a social profile to my ROSTR+ artist account")
                 }
@@ -187,7 +187,7 @@ public struct ClaimView: View {
                 ctaLabel: "Request",
                 action: {
                     #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    Haptics.tap()
                     #endif
                     openSupport(subject: "Add a payout method to my ROSTR+ artist account")
                 }

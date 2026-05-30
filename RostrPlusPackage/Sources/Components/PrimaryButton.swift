@@ -69,7 +69,7 @@ public struct PrimaryButton: View {
         Button {
             guard isEnabled, !isLoading else { return }
             #if canImport(UIKit)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.tap()
             #endif
             action()
         } label: {

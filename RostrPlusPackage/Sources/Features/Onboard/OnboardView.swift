@@ -150,7 +150,7 @@ public struct OnboardView: View {
         let isSelected = chosenRole == role
         return Button {
             #if canImport(UIKit)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.tap()
             #endif
             withAnimation(R.M.easeOutFast) { chosenRole = role }
         } label: {

@@ -53,7 +53,7 @@ public struct TabBar: View {
                 TabButton(tab: tab, isActive: active == tab) {
                     // Light-impact haptic on tap — plan default.
                     #if os(iOS)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    Haptics.tap()
                     #endif
                     withAnimation(R.M.easeOutFast) {
                         active = tab

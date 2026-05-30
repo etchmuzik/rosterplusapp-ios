@@ -175,7 +175,7 @@ public struct ThreadView: View {
     private func send() {
         guard canSend, let t = thread else { return }
         #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Haptics.tap()
         #endif
         store.send(
             content: draft,

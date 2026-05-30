@@ -127,7 +127,8 @@ public final class ProfileStore {
             phone: existing.phone,
             company: existing.company,
             bio: existing.bio,
-            city: existing.city
+            city: existing.city,
+            notificationPrefs: existing.notificationPrefs
         )
         state = .loaded(optimistic)
 
@@ -192,6 +193,43 @@ public final class ProfileStore {
         }
     }
 
+    /// Patch the `notification_prefs` JSONB column. Encodes ALL five keys
+    /// (never a partial object) so the dispatch side — send-push v4,
+    /// send-email v13, send-booking-reminders v5 — reads a complete set.
+    /// The web reference writer does the same (settings.html:269). Mirrors
+    /// `update()`: optimistic local flip, rollback to server truth on a
+    /// writer failure with the error surfaced via `lastError`.
+    public func updateNotificationPrefs(_ prefs: NotificationPrefs, userID: UUID) async {
+        lastError = nil
+        guard case .loaded(let existing) = state else {
+            lastError = "Profile not loaded yet."
+            return
+        }
+        // Optimistic local update — only the prefs column changes.
+        let optimistic = ProfileDTO(
+            id: existing.id,
+            email: existing.email,
+            displayName: existing.displayName,
+            role: existing.role,
+            avatarURL: existing.avatarURL,
+            phone: existing.phone,
+            company: existing.company,
+            bio: existing.bio,
+            city: existing.city,
+            notificationPrefs: prefs
+        )
+        state = .loaded(optimistic)
+
+        struct Patch: Encodable, Sendable { let notification_prefs: NotificationPrefs }
+        do {
+            try await writer.patchProfile(Patch(notification_prefs: prefs), userID: userID)
+        } catch {
+            lastError = error.localizedDescription
+            // Roll back to server truth on failure.
+            state = .loaded(existing)
+        }
+    }
+
     /// Flip `profiles.onboarding_complete` to true after the user has
     /// finished filling out the profile-edit form. Web mirrors this at
     /// app.js:2993 (`completeOnboarding`) — both clients write to the
@@ -228,7 +266,8 @@ public final class ProfileStore {
             phone: phone ?? existing.phone,
             company: company ?? existing.company,
             bio: bio ?? existing.bio,
-            city: city ?? existing.city
+            city: city ?? existing.city,
+            notificationPrefs: existing.notificationPrefs
         )
     }
 

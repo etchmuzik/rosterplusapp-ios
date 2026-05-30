@@ -119,7 +119,7 @@ public struct HomeView: View {
         Button {
             nav.push(.notifications)
             #if os(iOS)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.tap()
             #endif
         } label: {
             ZStack(alignment: .topTrailing) {
