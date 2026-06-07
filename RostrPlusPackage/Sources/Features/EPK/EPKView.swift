@@ -127,7 +127,8 @@ public struct EPKView: View {
     // MARK: — Cover hero
 
     private func coverHero(_ artist: ArtistDetail) -> some View {
-        Cover(seed: artist.stageName, size: nil, cornerRadius: 0)
+        Cover(seed: artist.stageName, size: nil, cornerRadius: 0,
+              image: ArtistPhoto.image(forStageName: artist.stageName))
             .frame(height: 260)
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 6) {

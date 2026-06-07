@@ -16,19 +16,56 @@ public struct Cover: View {
     let seed: String
     let size: CGFloat?
     let cornerRadius: CGFloat
+    /// Real artist photo to render in place of the seeded gradient. When
+    /// nil, falls back to the deterministic gradient (the historic
+    /// behaviour). The caller resolves the image from its own bundle /
+    /// remote source and passes it in — DesignSystem stays asset-agnostic.
+    let image: Image?
 
     /// Seeded gradient tile. Pass `size: nil` to let the caller control
     /// sizing via `.frame(...)` — used by RosterView's 2-column grid
-    /// which wants a fluid-width square.
-    public init(seed: String, size: CGFloat? = 44, cornerRadius: CGFloat = R.Rad.md) {
+    /// which wants a fluid-width square. Pass `image:` to show a real
+    /// photo instead of the gradient (same frame, corner radius, border).
+    public init(
+        seed: String,
+        size: CGFloat? = 44,
+        cornerRadius: CGFloat = R.Rad.md,
+        image: Image? = nil
+    ) {
         self.seed = seed
         self.size = size
         self.cornerRadius = cornerRadius
+        self.image = image
     }
 
     public var body: some View {
+        if let image {
+            photoBody(image)
+        } else {
+            gradientBody
+        }
+    }
+
+    // MARK: — Photo variant
+
+    @ViewBuilder
+    private func photoBody(_ image: Image) -> some View {
+        image
+            .resizable()
+            .aspectRatio(contentMode: .fill)
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(R.C.borderHair, lineWidth: R.S.hairline)
+            }
+    }
+
+    // MARK: — Gradient variant (historic fallback)
+
+    private var gradientBody: some View {
         let (h1, h2, l1, l2) = hash(seed: seed)
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        return RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [

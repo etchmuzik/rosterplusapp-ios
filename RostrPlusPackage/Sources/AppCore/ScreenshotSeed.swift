@@ -46,23 +46,26 @@ public enum ScreenshotSeed {
     public static let threadBookingID = bookingID // thread is bound to the booking
 
     // Stable artist IDs so booking/contract/thread cross-reference cleanly.
-    public static let idNovakPublic = "A0000001-0000-4000-8000-000000000001"
-    private static let idNovak  = UUID(uuidString: "A0000001-0000-4000-8000-000000000001")!
-    private static let idOrion  = UUID(uuidString: "A0000002-0000-4000-8000-000000000002")!
-    private static let idKarima = UUID(uuidString: "A0000003-0000-4000-8000-000000000003")!
-    private static let idMirela = UUID(uuidString: "A0000004-0000-4000-8000-000000000004")!
-    private static let idSami   = UUID(uuidString: "A0000005-0000-4000-8000-000000000005")!
-    private static let idSirene = UUID(uuidString: "A0000006-0000-4000-8000-000000000006")!
+    // ETCH is the hero (idEtch). The supporting cast are REAL ROSTR+ roster
+    // artists whose bundled portraits resolve by stage-name slug
+    // (web/assets/images/artists/<handle>.jpg → iOS Resources/artists/).
+    public static let idEtchPublic = "A0000001-0000-4000-8000-000000000001"
+    private static let idEtch    = UUID(uuidString: "A0000001-0000-4000-8000-000000000001")!
+    private static let idAshkan  = UUID(uuidString: "A0000002-0000-4000-8000-000000000002")!
+    private static let idImen    = UUID(uuidString: "A0000003-0000-4000-8000-000000000003")!
+    private static let idLithK   = UUID(uuidString: "A0000004-0000-4000-8000-000000000004")!
+    private static let idEpi     = UUID(uuidString: "A0000005-0000-4000-8000-000000000005")!
+    private static let idSarabi  = UUID(uuidString: "A0000006-0000-4000-8000-000000000006")!
 
-    // MARK: — Roster directory
+    // MARK: — Roster directory (real ROSTR+ artists, ETCH first)
 
     private static let roster: [RosterArtist] = [
-        .init(id: idOrion,  stage: "ORION KAI", genre: "Afro House",     city: "Riyadh",    rating: 5.0, verified: true),
-        .init(id: idNovak,  stage: "ETCH",  genre: "Tech House",     city: "Dubai",     rating: 4.9, verified: true),
-        .init(id: idSirene, stage: "SIRENE",    genre: "Progressive",    city: "Doha",      rating: 4.9, verified: true),
-        .init(id: idMirela, stage: "MIRELA",    genre: "Deep House",     city: "Dubai",     rating: 4.8, verified: true),
-        .init(id: idSami,   stage: "SAMI ROUX", genre: "Organic House",  city: "Abu Dhabi", rating: 4.8, verified: true),
-        .init(id: idKarima, stage: "KARIMA-N",  genre: "Melodic Techno", city: "Dubai",     rating: 4.7, verified: true),
+        .init(id: idEtch,   stage: "ETCH",     genre: "House",       city: "Dubai",  rating: 5.0, verified: true),
+        .init(id: idAshkan, stage: "ASHKAN K", genre: "House",       city: "Dubai",  rating: 4.9, verified: true),
+        .init(id: idImen,   stage: "IMEN",     genre: "Electronic",  city: "Dubai",  rating: 4.9, verified: true),
+        .init(id: idLithK,  stage: "LITH K",   genre: "House",       city: "Dubai",  rating: 4.8, verified: true),
+        .init(id: idEpi,    stage: "EPI",      genre: "Open Format", city: "Dubai",  rating: 4.8, verified: true),
+        .init(id: idSarabi, stage: "SARABI",   genre: "House",       city: "Dubai",  rating: 4.8, verified: true),
     ]
 
     // MARK: — Bookings
@@ -71,19 +74,19 @@ public enum ScreenshotSeed {
         .init(id: bookingID, eventName: "Friday Mainstage", artistName: "ETCH",
               venueName: "WHITE Dubai", eventDate: day(23), status: "confirmed",
               feeFormatted: "AED 28K", currency: "AED", fee: 28_000),
-        .init(id: UUID(), eventName: "Rooftop Sessions", artistName: "ORION KAI",
+        .init(id: UUID(), eventName: "Rooftop Sessions", artistName: "ASHKAN K",
               venueName: "Blu Dahlia", eventDate: day(26), status: "pending",
               feeFormatted: "SAR 42K", currency: "SAR", fee: 42_000),
-        .init(id: UUID(), eventName: "Closing Set", artistName: "KARIMA-N",
+        .init(id: UUID(), eventName: "Closing Set", artistName: "IMEN",
               venueName: "Cavalli Club", eventDate: day(27), status: "contracted",
               feeFormatted: "AED 32K", currency: "AED", fee: 32_000),
     ]
 
     private static let past: [BookingRow] = [
-        .init(id: UUID(), eventName: "Saturday Headline", artistName: "KARIMA-N",
+        .init(id: UUID(), eventName: "Saturday Headline", artistName: "IMEN",
               venueName: "Cavalli Club", eventDate: day(-8), status: "completed",
               feeFormatted: "AED 32K", currency: "AED", fee: 32_000),
-        .init(id: UUID(), eventName: "Late Set", artistName: "MIRELA",
+        .init(id: UUID(), eventName: "Late Set", artistName: "LITH K",
               venueName: "Soho Garden", eventDate: day(-15), status: "completed",
               feeFormatted: "AED 24K", currency: "AED", fee: 24_000),
     ]
@@ -94,13 +97,13 @@ public enum ScreenshotSeed {
         .init(id: UUID(), artistName: "ETCH", eventLabel: "WHITE Dubai · Fri 23",
               amount: 28_000, currency: "AED", amountFormatted: "AED 28,000",
               status: .paid, eventDate: day(23), paidAt: day(24)),
-        .init(id: UUID(), artistName: "KARIMA-N", eventLabel: "Cavalli Club · Sat 27",
+        .init(id: UUID(), artistName: "IMEN", eventLabel: "Cavalli Club · Sat 27",
               amount: 32_000, currency: "AED", amountFormatted: "AED 32,000",
               status: .scheduled, eventDate: day(27), paidAt: nil),
-        .init(id: UUID(), artistName: "ORION KAI", eventLabel: "Blu Dahlia · Sat 26",
+        .init(id: UUID(), artistName: "ASHKAN K", eventLabel: "Blu Dahlia · Sat 26",
               amount: 42_000, currency: "SAR", amountFormatted: "SAR 42,000",
               status: .pending, eventDate: day(26), paidAt: nil),
-        .init(id: UUID(), artistName: "MIRELA", eventLabel: "Soho Garden · Sat 12",
+        .init(id: UUID(), artistName: "LITH K", eventLabel: "Soho Garden · Sat 12",
               amount: 24_000, currency: "AED", amountFormatted: "AED 24,000",
               status: .paid, eventDate: day(-15), paidAt: day(-14)),
     ]
@@ -111,11 +114,11 @@ public enum ScreenshotSeed {
         .init(id: UUID(), kind: .booking, title: "ETCH accepted",
               body: "Your request for WHITE Dubai · Fri 23 was accepted.",
               createdAt: day(0).addingTimeInterval(-120), read: false, href: nil),
-        .init(id: UUID(), kind: .message, title: "MIRELA sent a message",
+        .init(id: UUID(), kind: .message, title: "LITH K sent a message",
               body: "Sending the updated set list by EOD.",
               createdAt: day(0).addingTimeInterval(-840), read: false, href: nil),
         .init(id: UUID(), kind: .contract, title: "Contract countersigned",
-              body: "KARIMA-N signed the Cavalli Club agreement.",
+              body: "IMEN signed the Cavalli Club agreement.",
               createdAt: day(0).addingTimeInterval(-3_600), read: true, href: nil),
         .init(id: UUID(), kind: .payment, title: "Payment scheduled",
               body: "AED 32K scheduled for Sat 27.",
@@ -127,38 +130,38 @@ public enum ScreenshotSeed {
 
     // MARK: — Artist detail / EPK (ETCH)
 
-    private static func novakDetail() -> ArtistDetail {
+    private static func etchDetail() -> ArtistDetail {
         ArtistDetail(
-            id: idNovak,
+            id: idEtch,
             stageName: "ETCH",
-            genres: ["Tech House", "Melodic Techno"],
-            citiesActive: ["Dubai", "Abu Dhabi", "Riyadh"],
+            genres: ["House", "Electronic"],
+            citiesActive: ["Dubai", "Cairo"],
             baseFee: 28_000,
             currency: "AED",
-            rating: 4.9,
+            rating: 5.0,
             totalBookings: 47,
             verified: true,
-            epkURL: "https://rosterplus.io/a/dj-novak",
+            epkURL: "https://rosterplus.io/a/etch",
             pressQuotes: [
                 .init(outlet: "MixMag ME", quote: "A controlled burn of a set — leaves the room breathing heavy."),
                 .init(outlet: "Time Out Dubai", quote: "The house selector you didn't know you needed."),
             ],
             pastPerformances: [
                 .init(venue: "WHITE Dubai", city: "Dubai", date: "12 Apr", crowd: "1,400 people"),
-                .init(venue: "Blu Dahlia", city: "Riyadh", date: "28 Mar", crowd: "800 people"),
+                .init(venue: "Sahel Beach", city: "Cairo", date: "28 Mar", crowd: "900 people"),
                 .init(venue: "Cavalli Club", city: "Dubai", date: "21 Mar", crowd: "1,200 people"),
                 .init(venue: "Soho Garden", city: "Dubai", date: "14 Mar", crowd: "2,000 people"),
             ],
             social: .init(
-                instagram: "https://instagram.com/djnovak",
-                soundcloud: "https://soundcloud.com/djnovak",
-                spotify: "https://open.spotify.com/artist/djnovak"
+                instagram: "https://instagram.com/etch",
+                soundcloud: "https://soundcloud.com/etch",
+                spotify: "https://open.spotify.com/artist/etch"
             ),
             tourMode: true
         )
     }
 
-    // MARK: — Contract (KARIMA-N · Cavalli Club, signed)
+    // MARK: — Contract (IMEN · Cavalli Club, signed)
 
     private static func cavalliContract(bookingID: UUID) -> ContractRow {
         ContractRow(
@@ -194,7 +197,7 @@ public enum ScreenshotSeed {
 
     private static func threadMessages(bookingID: UUID) -> [MessageDTO] {
         let me = demoUserID
-        let artist = idNovak
+        let artist = idEtch
         // Build via JSONDecoder so we hit the same decode path production
         // uses — MessageDTO intentionally has no public init.
         let rows: [[String: Any]] = [
@@ -259,10 +262,10 @@ public enum ScreenshotSeed {
         paymentsStore._testLoad(payments)
         notificationsStore._testLoad(notifications)
         profileStore._testLoad(demoProfile())
-        artistDetailStore._testLoad(novakDetail())
+        artistDetailStore._testLoad(etchDetail())
 
         // Thread + contract are bound to the stable demo booking id.
-        let names: [UUID: String] = [idNovak: "ETCH", demoUserID: "Studio Collective"]
+        let names: [UUID: String] = [idEtch: "ETCH", demoUserID: "Studio Collective"]
         inboxStore._testLoad(userID: demoUserID, messages: threadMessages(bookingID: bookingID), names: names)
         contractsStore._testLoad(cavalliContract(bookingID: bookingID))
     }

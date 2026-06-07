@@ -61,7 +61,8 @@ public struct ArtistView: View {
     // MARK: — Cover hero
 
     private func coverHero(_ artist: ArtistDetail) -> some View {
-        Cover(seed: artist.stageName, size: nil, cornerRadius: R.Rad.card3)
+        Cover(seed: artist.stageName, size: nil, cornerRadius: R.Rad.card3,
+              image: ArtistPhoto.image(forStageName: artist.stageName))
             .frame(height: 220)
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 4) {

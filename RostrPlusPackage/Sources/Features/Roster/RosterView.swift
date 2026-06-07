@@ -212,7 +212,8 @@ private struct ArtistCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: R.S.xs) {
-            Cover(seed: artist.stage, size: nil, cornerRadius: R.Rad.button2)
+            Cover(seed: artist.stage, size: nil, cornerRadius: R.Rad.button2,
+                  image: ArtistPhoto.image(forStageName: artist.stage))
                 .frame(height: 140)
                 .overlay(alignment: .topTrailing) {
                     if artist.verified {
