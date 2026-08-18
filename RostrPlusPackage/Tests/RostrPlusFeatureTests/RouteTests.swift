@@ -51,7 +51,7 @@ struct RouteTests {
         // tests that depend on it (back-button audit, deep-link parser
         // round-trip) silently miss the new case. Pinning the count
         // forces a manual review on every Route addition.
-        #expect(Route.allCases.count == 15)
+        #expect(Route.allCases.count == 16)
         let ids = Route.allCases.map(\.id)
         #expect(Set(ids).count == ids.count, "Route.allCases must be unique")
     }

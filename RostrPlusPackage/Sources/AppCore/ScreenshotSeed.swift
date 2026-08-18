@@ -219,11 +219,13 @@ public enum ScreenshotSeed {
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: rows) else { return [] }
         let decoder = JSONDecoder()
-        let fmt = ISO8601DateFormatter()
+        // ISO8601DateFormatter isn't Sendable; use the Sendable FormatStyle
+        // inside the @Sendable closure instead (same "yyyy-MM-ddTHH:mm:ssZ"
+        // shape the seed writes above).
         decoder.dateDecodingStrategy = .custom { d in
             let c = try d.singleValueContainer()
             let s = try c.decode(String.self)
-            return fmt.date(from: s) ?? Date()
+            return (try? Date(s, strategy: .iso8601)) ?? Date()
         }
         return (try? decoder.decode([MessageDTO].self, from: data)) ?? []
     }

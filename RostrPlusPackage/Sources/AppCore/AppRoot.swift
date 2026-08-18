@@ -447,6 +447,9 @@ private struct DetailRouter: View {
 
             case .onboard:
                 OnboardView(nav: nav)
+
+            case .deleteAccount:
+                DeleteAccountView(nav: nav)
             }
         }
         .background(R.C.bg0)

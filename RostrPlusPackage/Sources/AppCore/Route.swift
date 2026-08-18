@@ -21,6 +21,7 @@ public enum Route: Hashable, Identifiable, Sendable {
     case onboard
     case calendar
     case analytics
+    case deleteAccount
 
     public var id: String {
         switch self {
@@ -39,6 +40,7 @@ public enum Route: Hashable, Identifiable, Sendable {
         case .onboard:                return "onboard"
         case .calendar:               return "calendar"
         case .analytics:              return "analytics"
+        case .deleteAccount:          return "deleteAccount"
         }
     }
 }
@@ -67,7 +69,8 @@ extension Route: CaseIterable {
             .signIn,
             .onboard,
             .calendar,
-            .analytics
+            .analytics,
+            .deleteAccount
         ]
     }
 }

@@ -36,7 +36,8 @@ struct NavigationBackAffordanceTests {
         (.profileEdit,                   "Features/ProfileEdit/ProfileEditView.swift"),
         (.invoice(bookingID: "x"),       "Features/Invoice/InvoiceView.swift"),
         (.calendar,                      "Features/Calendar/CalendarView.swift"),
-        (.analytics,                     "Features/Analytics/AnalyticsView.swift")
+        (.analytics,                     "Features/Analytics/AnalyticsView.swift"),
+        (.deleteAccount,                 "Features/Settings/DeleteAccountView.swift")
     ]
 
     /// Resolve the package's Sources/ directory by walking up from this

@@ -133,6 +133,10 @@ public final class BookingsStore {
                 }
 
                 let mapped = rows.map(Self.rowFromDTO)
+                // `event_date` is a date-only column; RostrSupabase.jsonDecoder
+                // anchors it to LOCAL midnight, so a same-calendar-day
+                // comparison against the device's start-of-today is exact:
+                // tonight's gig stays "upcoming" until local midnight.
                 let today = Calendar.current.startOfDay(for: Date())
                 let upcoming = mapped.filter { $0.eventDate >= today }
                 let past = mapped

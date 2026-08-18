@@ -17,6 +17,9 @@
 import SwiftUI
 import AuthenticationServices
 import DesignSystem
+import os
+
+private let log = Logger(subsystem: "io.rosterplus.app", category: "SignInView")
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -480,9 +483,22 @@ public struct SignInView: View {
                 await auth.signInWithApple(credential: credential, nonce: appleNonce)
                 appleNonce = AppleNonceHelper.random()
             }
-        case .failure:
-            // User cancelled — no error banner.
-            break
+        case .failure(let error):
+            // A user cancellation is not an error — stay silent. Anything
+            // else (network drop, Apple service hiccup, no credential) is a
+            // real failure the user should see, instead of a button that
+            // appears to do nothing.
+            if let authError = error as? ASAuthorizationError,
+               authError.code == .canceled {
+                return
+            }
+            // Keep the copy friendly, but log the real code: ASAuthorizationError
+            // .unknown (1000) is what fires when the Sign in with Apple
+            // capability / entitlement is misconfigured — exactly the class of
+            // failure App Review hits, and previously invisible in the field.
+            let code = (error as? ASAuthorizationError)?.code.rawValue ?? -1
+            log.error("Sign in with Apple failed (ASAuthorizationError \(code, privacy: .public)): \(error.localizedDescription, privacy: .public)")
+            auth.setAppleAuthorizationError("Couldn’t complete Sign in with Apple. Try again, or use email and password.")
         }
     }
 }

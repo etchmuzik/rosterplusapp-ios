@@ -201,6 +201,14 @@ public final class AuthStore {
 
     // MARK: — Apple
 
+    /// Surface a friendly error when the Apple authorization itself fails
+    /// (before we ever get a credential) — e.g. a network drop or an Apple
+    /// service error. The SignInWithAppleButton's `.failure` branch calls
+    /// this for genuine errors but stays silent on a user cancellation.
+    public func setAppleAuthorizationError(_ message: String) {
+        lastError = message
+    }
+
     /// Finish an Apple Sign In flow. Hand in the `ASAuthorizationAppleIDCredential`
     /// from the SignInWithAppleButton callback.
     public func signInWithApple(credential: ASAuthorizationAppleIDCredential, nonce: String) async {
@@ -217,6 +225,45 @@ public final class AuthStore {
             await apply(session: session)
         } catch {
             lastError = humanize(error)
+        }
+    }
+
+    // MARK: — Delete account
+
+    /// Permanently delete the signed-in user's account (App Store
+    /// Guideline 5.1.1(v)). Calls the `delete-account` edge function,
+    /// which verifies this session's JWT, scrubs the user's PII, and
+    /// hard-deletes the auth user. The `confirm: "DELETE"` body is the
+    /// server-side echo of the type-to-confirm step in DeleteAccountView.
+    ///
+    /// On success we tear down the local session exactly like sign-out so
+    /// AppRoot swaps to the sign-in shell. Returns false (and sets
+    /// `lastError`) if the function rejects the request.
+    @discardableResult
+    public func deleteAccount() async -> Bool {
+        lastError = nil
+        do {
+            let payload: [String: AnyJSON] = [
+                "confirm": .string("DELETE"),
+                "source":  .string("ios")
+            ]
+            // functions.invoke attaches the current session JWT, which the
+            // edge function verifies to identify the account to delete.
+            try await client.functions.invoke(
+                "delete-account",
+                options: FunctionInvokeOptions(body: payload)
+            )
+            // Server session is already gone — clear local state so the UI
+            // lands on sign-in. (.userDeleted in startObserving() is a
+            // second safety net if the auth listener fires first.)
+            await signOut()
+            return true
+        } catch let error as FunctionsError {
+            lastError = humanize(decodeFunctionError(error) ?? error)
+            return false
+        } catch {
+            lastError = humanize(error)
+            return false
         }
     }
 
@@ -295,8 +342,37 @@ public final class AuthStore {
         if raw.contains("rate_limited") {
             return "Hold on — try again in a minute."
         }
+        // Shared by signup / send-password-reset / delete-account: the
+        // function is missing an env secret. Context-neutral copy — this
+        // used to say "Sign-up is…" and rendered on the delete flow too.
         if raw.contains("misconfigured") {
-            return "Sign-up is temporarily unavailable. Try again shortly."
+            return "This service is temporarily unavailable. Try again shortly."
+        }
+        // delete-account edge-function codes.
+        if raw.contains("admin_account") {
+            return "This account can’t be deleted in-app. Contact support."
+        }
+        if raw.contains("confirm_mismatch") {
+            return "Type DELETE exactly to confirm."
+        }
+        if raw.contains("delete_failed") {
+            return "Couldn’t delete your account. Try again in a moment."
+        }
+        // The function does its own JWT check (verify_jwt is off at the
+        // gateway); an expired/missing session comes back as a bare
+        // "unauthorized" body — never show that string to a person.
+        if raw == "unauthorized" || raw.contains("unauthorized") || raw.contains("jwt") {
+            return "Your session has expired. Sign in again, then retry."
+        }
+        // Server-side generic failures (delete-account `internal` /
+        // `invalid_body`, or an edge function that returned a non-JSON
+        // non-2xx — the SDK's own text is "Edge Function returned a
+        // non-2xx status code"). Same class of leak as the raw
+        // "Provider … is not enabled" screenshot from App Review.
+        if raw == "internal" || raw == "invalid_body" || raw == "method_not_allowed"
+            || raw.contains("internal server") || raw.contains("non-2xx")
+            || raw.contains("edge function returned") {
+            return "Something went wrong on our side. Try again in a moment."
         }
         // GoTrue / Supabase Auth errors.
         if raw.contains("invalid login credentials") || raw.contains("invalid_credentials") {
@@ -313,6 +389,14 @@ public final class AuthStore {
         }
         if raw.contains("network") || raw.contains("internet") || raw.contains("offline") {
             return "Connection issue — check your network."
+        }
+        // Provider disabled / not enabled (GoTrue error_code "provider_disabled").
+        // Fired when an OAuth/id-token grant lands while that provider is off
+        // in the Supabase project. Map it to friendly copy so a raw GoTrue
+        // string can never render in the sign-in banner again — it was the
+        // App Store 2.1(a) "Provider … is not enabled" screenshot.
+        if raw.contains("provider") && (raw.contains("not enabled") || raw.contains("disabled")) {
+            return "That sign-in method isn’t available right now. Try email and password instead."
         }
         return error.localizedDescription
     }

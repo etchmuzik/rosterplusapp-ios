@@ -35,6 +35,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Simulator to run against. Override with SIM_NAME=... ; otherwise pick
+# the first available iPhone (Xcode 26 ships iPhone 17 / 16 Plus, not
+# "iPhone 16", so a hard-coded name rots with every Xcode release).
+SIM_NAME="${SIM_NAME:-$(xcrun simctl list devices available 2>/dev/null \
+  | grep -oE 'iPhone [0-9][^(]*' | sed 's/ *$//' | head -1)}"
+: "${SIM_NAME:?No available iPhone simulator found — install one in Xcode › Settings › Components}"
+
 DERIVED=$(mktemp -d)
 trap 'rm -rf "$DERIVED"' EXIT
 
@@ -42,7 +49,7 @@ echo "==> Building RostrPlus.app for plist inspection…"
 xcodebuild \
   -project RostrPlus.xcodeproj \
   -scheme RostrPlus \
-  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -destination "platform=iOS Simulator,name=$SIM_NAME" \
   -derivedDataPath "$DERIVED" \
   -quiet \
   build >/dev/null

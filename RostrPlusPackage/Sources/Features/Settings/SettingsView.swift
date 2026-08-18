@@ -169,6 +169,7 @@ public struct SettingsView: View {
                 }
                 privacySection
                 supportSection
+                dangerZoneSection
                 buildFooter
                 signOutButton
                 Color.clear.frame(height: 100)
@@ -236,8 +237,14 @@ public struct SettingsView: View {
 
     private var accountSection: some View {
         SettingsSection(title: "Account") {
-            SettingsRow(icon: "checkmark.seal", label: "Claim profile", trailing: .chevron) {
-                nav.push(.claim)
+            // Claiming is an artist-only flow (it links the signed-in
+            // profile to a verified artist row). Hiding it for promoters
+            // keeps them out of the empty claim checklist — which is also
+            // where App Review got stranded from the Home role toggle.
+            if nav.role == .artist {
+                SettingsRow(icon: "checkmark.seal", label: "Claim profile", trailing: .chevron) {
+                    nav.push(.claim)
+                }
             }
             SettingsRow(icon: "envelope", label: "Change email", value: displayEmail, trailing: .chevron) {
                 // Self-service email change isn't in-app yet — route via
@@ -309,19 +316,38 @@ public struct SettingsView: View {
 
     private var supportSection: some View {
         SettingsSection(title: "Support") {
+            // rosterplus.io has no /help page (404 as of 2026-08-18) — route
+            // "Help centre" to support mail until one exists. A dead link
+            // in the Support section is an App Review 1.5 risk.
             SettingsRow(icon: "questionmark.circle", label: "Help centre", trailing: .chevron) {
-                if let url = URL(string: "https://rosterplus.io/help") { openURL(url) }
+                if let url = URL(string: "mailto:hi@rosterplus.io?subject=ROSTR%2B%20help") { openURL(url) }
             }
             SettingsRow(icon: "bubble.left", label: "Contact support", trailing: .chevron) {
                 if let url = URL(string: "mailto:hi@rosterplus.io?subject=ROSTR%2B%20support%20request") {
                     openURL(url)
                 }
             }
+            // Canonical legal routes on the live site (/terms and /privacy
+            // only work via a 308 the site may not keep).
             SettingsRow(icon: "doc.text", label: "Terms of service", trailing: .chevron) {
-                if let url = URL(string: "https://rosterplus.io/terms") { openURL(url) }
+                if let url = URL(string: "https://rosterplus.io/legal/terms") { openURL(url) }
             }
             SettingsRow(icon: "hand.thumbsup", label: "Privacy policy", trailing: .chevron) {
-                if let url = URL(string: "https://rosterplus.io/privacy") { openURL(url) }
+                if let url = URL(string: "https://rosterplus.io/legal/privacy") { openURL(url) }
+            }
+        }
+    }
+
+    // MARK: — Danger zone
+
+    /// Account deletion lives in its own section so it reads as a
+    /// deliberate, separate action — App Store Guideline 5.1.1(v) requires
+    /// a self-service path to delete an account, and DeleteAccountView
+    /// gates it behind a type-to-confirm step.
+    private var dangerZoneSection: some View {
+        SettingsSection(title: "Danger zone") {
+            SettingsRow(icon: "trash", label: "Delete account", trailing: .chevron) {
+                nav.push(.deleteAccount)
             }
         }
     }
